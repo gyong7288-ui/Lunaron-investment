@@ -320,8 +320,17 @@ const {
 /* ════════════════════════════════════════════════════════
    CONFIG — バックエンドURL（相対パスを使用）
    ════════════════════════════════════════════════════════ */
-const API_BASE = localStorage.getItem("LUNARON_API_BASE") || window.location.origin;
-const setApiBase = (url) => { localStorage.setItem("LUNARON_API_BASE", url); location.reload(); };
+const API_BASE = localStorage.getItem("LUNARON_API_BASE") || 
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+    ? "http://localhost:8000" 
+    : window.location.origin);
+
+const setApiBase = (url) => { 
+  let formattedUrl = url.trim().replace(/\/$/, ""); 
+  if (formattedUrl && !formattedUrl.startsWith("http")) formattedUrl = "https://" + formattedUrl;
+  localStorage.setItem("LUNARON_API_BASE", formattedUrl); 
+  location.reload(); 
+};
 
 /* ── Ticker 定義（バックエンドが落ちている場合のフォールバック用） ── */
 const FALLBACK_TICKERS = [
@@ -709,9 +718,10 @@ function App() {
           </div>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <button onClick={() => {
-              const url = prompt("APIベースURLを入力してください:", API_BASE);
+              const suggested = "https://gyong7288-ui-lunaron-investment.hf.space";
+              const url = prompt(`APIベースURLを入力してください:\n(推奨: ${suggested})`, API_BASE || suggested);
               if (url) setApiBase(url);
-            }} style={{background:"none",border:"none",cursor:"pointer",color:"#94A3B8",fontSize:14}}>⚙️</button>
+            }} style={{background:"none",border:"none",cursor:"pointer",color:backendOk?"#94A3B8":"#F59E0B",fontSize:14,animation:backendOk?"none":"pulse 2s infinite"}}>⚙️</button>
             <div className="live-badge">
               <div className="live-dot"/><span className="live-text">LIVE</span>
             </div>
