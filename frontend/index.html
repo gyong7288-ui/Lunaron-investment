@@ -989,6 +989,7 @@ function App() {
               {/* Quant summary */}
               <hr className="divider"/>
               <div className="metric-label">定量指標サマリー</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
                 {[
                   ["RSI値",     latest?.rsi?.toFixed(1)??"—", latest?.rsi>70?"#DC2626":latest?.rsi<30?"#16A34A":"#0F172A", "買われすぎ・売られすぎを示す指標です。70以上は過熱（売りサイン）、30以下は売られすぎ（買いサイン）とされます。"],
                   ["MACD方向",  latest?.hist>0?"強気 ↗":"弱気 ↘", latest?.hist>0?"#16A34A":"#DC2626", "トレンドの方向性を示す指標です。「強気」は上昇トレンド、「弱気」は下落トレンドを示唆します。"],
