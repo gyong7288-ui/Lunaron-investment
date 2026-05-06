@@ -323,7 +323,7 @@ const {
 const API_BASE = localStorage.getItem("LUNARON_API_BASE") || 
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
     ? "http://localhost:8000" 
-    : window.location.origin);
+    : (window.location.origin.includes("hf.space") ? window.location.origin : ""));
 
 const setApiBase = (url) => { 
   let formattedUrl = url.trim().replace(/\/$/, ""); 
@@ -738,6 +738,13 @@ function App() {
 
       <div className="content">
         {apiError && <div className="error-banner">⚠ {apiError}</div>}
+        {!backendOk && window.location.protocol === "https:" && API_BASE.startsWith("http://") && (
+          <div className="error-banner" style={{background:"#FFFBEB",borderColor:"#F59E0B",color:"#B45309"}}>
+            <strong>⚠ セキュリティによる接続ブロック</strong><br/>
+            HTTPS（Cloudflare）からローカル（HTTP）への通信がブラウザで禁止されています。<br/>
+            右上の⚙️設定から、<strong>Hugging FaceのURL（https://...）</strong>を入力するか、ローカル環境（localhost:8000）で直接開いてください。
+          </div>
+        )}
 
         {/* ══════════════════════════════════════════
             TAB: チャート分析
