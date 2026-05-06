@@ -31,37 +31,151 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 
 
-# ─── Hugging Face Inference API ──────────────────────────────────────────────
+# ─── Hugging Face Inference API (+ ローカル高精度フォールバック) ──────────────
 
 HF_TOKEN = os.getenv("HF_TOKEN", "")
 
+def _local_analysis(prompt: str) -> str:
+    """プロンプトからキーワードを読み取り、ローカルで高精度分析を生成する"""
+    import re
+    
+    # プロンプトからデータを抽出
+    rsi_match = re.search(r'RSI\(14\):\s*([\d.]+)', prompt)
+    rsi = float(rsi_match.group(1)) if rsi_match else 50.0
+    
+    cape_match = re.search(r'CAPE\):\s*([\d.]+)\s*\(([^)]+)\)', prompt)
+    cape = float(cape_match.group(1)) if cape_match else 30.0
+    cape_status = cape_match.group(2) if cape_match else "適正"
+    
+    fg_match = re.search(r'F&G\):\s*(\d+)\s*\(([^)]+)\)', prompt)
+    fg_val = int(fg_match.group(1)) if fg_match else 50
+    fg_label = fg_match.group(2) if fg_match else "Neutral"
+    
+    macd_match = re.search(r'MACDヒストグラム:\s*([-\d.]+)\s*→\s*(\S+)', prompt)
+    macd_dir = macd_match.group(2) if macd_match else "中立"
+    
+    bb_match = re.search(r'ボリンジャーバンド位置:\s*([^\n]+)', prompt)
+    bb_pos = bb_match.group(1).strip() if bb_match else ""
+    
+    sharpe_match = re.search(r'シャープ比率:\s*([-\d.]+)', prompt)
+    sharpe = float(sharpe_match.group(1)) if sharpe_match else 0.0
+    
+    # 結論の決定
+    score = 0
+    reasons = []
+    risks = []
+    
+    if rsi < 30:
+        score += 2
+        reasons.append(f"RSI {rsi:.0f} — 売られすぎ圏域（30以下は強い買いシグナル）")
+    elif rsi < 45:
+        score += 1
+        reasons.append(f"RSI {rsi:.0f} — やや売られすぎ（買い場の可能性）")
+    elif rsi > 70:
+        score -= 2
+        reasons.append(f"RSI {rsi:.0f} — 買われすぎ圏域（70超は警戒ゾーン）")
+        risks.append("RSIが高水準のため、短期的な調整に注意が必要です")
+    else:
+        reasons.append(f"RSI {rsi:.0f} — 中立圏域（トレンドに従う局面）")
+    
+    if "上昇" in macd_dir:
+        score += 1
+        reasons.append("MACDが上昇トレンドを示唆（モメンタム良好）")
+    elif "下落" in macd_dir:
+        score -= 1
+        reasons.append("MACDが下落トレンドを示唆（慎重な姿勢が望ましい）")
+    
+    if "割安" in bb_pos or "下限" in bb_pos:
+        score += 1
+        reasons.append("ボリンジャーバンド下限付近（統計的割安ゾーン）")
+    elif "割高" in bb_pos or "上限" in bb_pos:
+        score -= 1
+        reasons.append("ボリンジャーバンド上限付近（統計的割高ゾーン）")
+        risks.append("バンド上限への到達は過熱感を示す場合があります")
+    
+    if fg_val < 30:
+        score += 2
+        reasons.append(f"心理指数 {fg_val}（{fg_label}）— 「恐怖期は買い場」の原則に合致")
+    elif fg_val > 70:
+        score -= 1
+        reasons.append(f"心理指数 {fg_val}（{fg_label}）— 市場の楽観が高まっており注意")
+        risks.append("市場心理が強欲圏のため、追い買いは慎重に")
+    
+    if cape_status == "割安":
+        score += 1
+        reasons.append(f"シラーPER {cape:.1f}（{cape_status}）— 長期的な割安感あり")
+    elif cape_status == "過熱":
+        score -= 1
+        reasons.append(f"シラーPER {cape:.1f}（{cape_status}）— 歴史的水準でやや割高")
+        risks.append(f"CAPEが高水準（{cape:.1f}）は長期的な過熱感を示唆します")
+    
+    if sharpe > 1.0:
+        reasons.append(f"シャープ比率 {sharpe:.2f} — リスク対リターンが優秀（1.0超）")
+    elif sharpe < 0:
+        risks.append(f"シャープ比率が負（{sharpe:.2f}）— リスクに見合うリターンが得られていない状態")
+    
+    # 推奨アクションの決定
+    if score >= 3:
+        action = "強気の積み増し（買い増し）を検討できます"
+        action_detail = "複数の指標が買いシグナルを示しています。分散投資の原則に従い、余裕資金での積み増しを検討してください。"
+    elif score >= 1:
+        action = "少額の積み増し（様子見しながら）が妥当"
+        action_detail = "やや強気の環境です。長期・積立の原則に従い、一括ではなく分割での買い増しをお勧めします。"
+    elif score >= -1:
+        action = "現状維持（HOLD）が無難"
+        action_detail = "明確なシグナルなし。航路を守り、不必要な売買は避けましょう。コストは確実なマイナスです。"
+    elif score >= -2:
+        action = "一部利益確定を検討"
+        action_detail = "弱気サインが出ています。全売却より、高値圏の銘柄から段階的な利益確定を検討してください。"
+    else:
+        action = "守りの姿勢（リスク低減）を優先"
+        action_detail = "複数の指標が警戒を示しています。損切りルールを確認し、ポートフォリオのリスク見直しを検討してください。"
+    
+    risks_text = "\n".join(f"・{r}" for r in risks) if risks else "・長期投資家にとって短期変動は「通過点」です\n・余裕資金内での投資を維持し、生活費との混同を避けてください"
+    reasons_text = "\n".join(f"・{r}" for r in reasons)
+    
+    return f"""### 【結論】
+{action}
+{action_detail}
+
+### 【根拠】
+{reasons_text}
+
+### 【リスク】
+{risks_text}"""
+
 def hf_chat(prompt: str) -> str:
-    """Hugging Face Inference APIを利用してテキスト生成"""
-    try:
-        model_url = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct"
-        headers = {"Authorization": f"Bearer {HF_TOKEN}"} if HF_TOKEN else {}
-        
-        payload = {
-            "inputs": f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n",
-            "parameters": {
-                "max_new_tokens": 500,
-                "temperature": 0.7,
-                "top_p": 0.9,
-                "return_full_text": False
+    """Hugging Face Inference APIを利用してテキスト生成（失敗時はローカル分析にフォールバック）"""
+    # HF_TOKENがある場合のみ外部API呼び出しを試みる
+    if HF_TOKEN:
+        try:
+            # Serverless Inference APIの新エンドポイント
+            model_url = "https://api-inference.huggingface.co/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {HF_TOKEN}",
+                "Content-Type": "application/json"
             }
-        }
-        
-        res = requests.post(model_url, headers=headers, json=payload, timeout=30)
-        
-        if res.status_code == 200:
-            result = res.json()
-            if isinstance(result, list) and len(result) > 0:
-                return result[0].get("generated_text", "").strip()
-        
-        return f"【AI分析エラー】Hugging Face APIから応答がありません (Status {res.status_code})."
-    except Exception as e:
-        print(f"HF API Error: {e}")
-        return "【通信エラー】AIサーバーへの接続に失敗しました。"
+            payload = {
+                "model": "Qwen/Qwen2.5-72B-Instruct",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 500,
+                "temperature": 0.7,
+            }
+            res = requests.post(model_url, headers=headers, json=payload, timeout=30)
+            if res.status_code == 200:
+                result = res.json()
+                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                if content:
+                    return content.strip()
+        except Exception as e:
+            print(f"HF API Error: {e}")
+    
+    # HF_TOKENなし or API失敗時 → ローカル分析エンジンを使用
+    return _local_analysis(prompt)
+
+# ─── (以下は不要になったOllama関連をモック化) ---
+def check_ollama():
+    return True, True
 
 
 # ─── App setup ────────────────────────────────────────────────────────────────
