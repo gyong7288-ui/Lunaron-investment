@@ -320,7 +320,8 @@ const {
 /* ════════════════════════════════════════════════════════
    CONFIG — バックエンドURL（相対パスを使用）
    ════════════════════════════════════════════════════════ */
-const API_BASE = window.location.origin;
+const API_BASE = localStorage.getItem("LUNARON_API_BASE") || window.location.origin;
+const setApiBase = (url) => { localStorage.setItem("LUNARON_API_BASE", url); location.reload(); };
 
 /* ── Ticker 定義（バックエンドが落ちている場合のフォールバック用） ── */
 const FALLBACK_TICKERS = [
@@ -705,9 +706,14 @@ function App() {
                 {ollamaStatus.ollama_running ? (ollamaStatus.gemma3_ready ? "● AI Ready" : "▲ AI Loading") : "○ AI Offline"}
               </div>
             </div>
-          </div>
-          <div className="live-badge">
-            <div className="live-dot"/><span className="live-text">LIVE</span>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <button onClick={() => {
+              const url = prompt("APIベースURLを入力してください:", API_BASE);
+              if (url) setApiBase(url);
+            }} style={{background:"none",border:"none",cursor:"pointer",color:"#94A3B8",fontSize:14}}>⚙️</button>
+            <div className="live-badge">
+              <div className="live-dot"/><span className="live-text">LIVE</span>
+            </div>
           </div>
         </div>
       </header>
