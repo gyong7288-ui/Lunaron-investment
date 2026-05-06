@@ -1242,21 +1242,9 @@ function App() {
           <span>投資は自己責任でお願いします · Not financial advice</span>
         </div>
       </div>
-      {/* ── Footer Quotes ── */}
+      {/* ── Footer ── */}
       <footer style={{marginTop:40,padding:24,borderTop:"1px solid #E2E8F0",textAlign:"center"}}>
-        <div style={{fontSize:12,color:"#64748B",fontStyle:"italic",maxWidth:600,margin:"0 auto"}}>
-          {(() => {
-            const quotes = [
-              "「投資とは、ペンキが乾くのを見守るようなものだ。刺激を求めるならカジノへ行け。」— サミュエルソン",
-              "「賢者は、愚者が最後にすること（売却）を最初に（購入）する。」— ロスチャイルド",
-              "「暴落は、富を再分配するためのバーゲンセールである。」— バフェット",
-              "「航路を守れ（Stay the course）。市場の嵐に惑わされてはならない。」— ボーグル",
-              "「投資において最も危険な言葉は『今回は違う』である。」— テンプルトン"
-            ];
-            return quotes[Math.floor((new Date().getMinutes() / 60) * quotes.length)];
-          })()}
-        </div>
-        <div style={{fontSize:10,color:"#94A3B8",marginTop:12}}>
+        <div style={{fontSize:10,color:"#94A3B8"}}>
           &copy; 2026 Lunaron AI Investment Dashboard. すべてのデータは分析用であり、投資判断は自己責任で行ってください。
         </div>
       </footer>
