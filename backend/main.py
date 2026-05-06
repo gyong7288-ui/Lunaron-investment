@@ -349,32 +349,49 @@ def get_indicators(ticker_id: str, period: str = "3mo"):
 
 @app.post("/api/analyze")
 def analyze_ticker(req: AnalyzeRequest):
-    """Hugging Face (Qwen2.5) でテクニカル分析コメントを生成"""
+    """Hugging Face (Qwen2.5) で投資知識を考慮した高精度分析を生成"""
     try:
         data     = get_indicators(req.ticker_id)
         latest   = data["latest"]
         gbm_vals = data["gbm"]["forecast"][-1]
         ex = data.get("expert", {})
         
-        prompt = f"""あなたは投資の専門家です。以下のデータに基づき、投資家へアドバイスしてください。
+        # RSIに基づく简易評価
+        rsi = latest.get('rsi') or 50
+        rsi_comment = "買われすぎ偉向（警戒）" if rsi > 70 else "売られすぎ偳向（買いチャンス）" if rsi < 30 else "中立圖"
+        macd_dir = "上昇トレンド" if (latest.get('hist') or 0) > 0 else "下落トレンド"
+        bb_pos = ""
+        if latest.get('upper') and latest.get('lower') and latest.get('close'):
+            bb_pos = "上限側（割高気味）" if latest['close'] > latest['upper'] * 0.98 else "下限側（割安気味）" if latest['close'] < latest['lower'] * 1.02 else "バンド内（標準的）"
+        
+        prompt = f"""あなたはプロの投資アドバイザー「Lunaron Expert」です。投資の三原則（収益性・安全性・流動性のバランス）、長期・分散・積立の原則、リスク管理の鉄則を踏まえ、投資家への高精度なアドバイスをしてください。
 
 【市場データ: {data['name']} ({req.ticker_id})】
-現在価格: {latest['close']:.2f} | RSI(14): {latest['rsi']}
-シラーPER: {ex.get('cape')} ({ex.get('cape_status')})
-心理指数: {ex.get('fg_val')} ({ex.get('fg_label')})
+現在価格: {latest['close']:.2f}　|　前日比: {data.get('change_pct', 0):+.2f}%
+RSI(14): {rsi:.1f} → {rsi_comment}
+MACDヒストグラム: {(latest.get('hist') or 0):.4f} → {macd_dir}
+ボリンジャーバンド位置: {bb_pos}
+シャープ比率: {data.get('sharpe', 0):.2f}（リスク対リターンの展局）
+シラーPER(CAPE): {ex.get('cape', '?')} ({ex.get('cape_status', '?')}) （歴史的バリュエーション）
+心理指数(F&G): {ex.get('fg_val', 50)} ({ex.get('fg_label', 'Neutral')}) （0=極度の恐怖、100=極度の嫌欲）
+GBM予測石7日後中央値: {gbm_vals['p50']:.2f} / 愉観(90%ile): {gbm_vals['p90']:.2f} / 悉観(10%ile): {gbm_vals['p10']:.2f}
 
-【指示】
-1. 現在のバリュエーションと市場心理に基づき、バーゲンセールか過熱状態かを判断してください。
-2. 長期投資の重要性を説いてください。
-3. ユーザー質問: {req.query or 'なし'}
-回答は、以下のマークダウン形式（【結論】【根拠】【リスク】）で、それぞれ短く簡潔に（全体で300文字以内）出力してください。
+【投資の原則】
+- 長期・分散・積立が基本。短期の値動きより長期的なトレンドが重要。
+- 心理指数が完全に恐怖側の時が最大の買い場所（バイ・ザ・ディップの原則）。
+- シャープ比率が負の場合は、リスクに見合ったリターンが得られていない状態。
+- SMA50がSMA200を上回り＝ゴールデンクロス（強気サイン）、下回り＝デッドクロス（警戒）。
+
+【ユーザー質問】 {req.query or 'なし'}
+
+以下の形式で出力してください（各項目1、2行以内）:
 
 ### 【結論】
-(ここに具体的な推奨アクション)
+(推奨アクションを明確に: 積み追く（買い追がえ）/ 様子見（HOLD）/ 一部利益確定を検討）
 ### 【根拠】
-(ここにテクニカルやバリュエーションの理由)
+(上記データに基づく海合いの理由を箇条書きで)
 ### 【リスク】
-(ここに長期投資の注意点)
+(掛かるリスクと対策を簡潔に)
 """
 
         analysis = hf_chat(prompt)

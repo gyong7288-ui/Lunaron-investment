@@ -714,7 +714,7 @@ function App() {
 
       {/* ── Tabs ── */}
       <nav className="tabs">
-        {[["chart","◈ チャート分析"],["portfolio","◉ ポートフォリオ"],["forecast","◎ GBM予測"]].map(([k,l])=>(
+        {[["chart","◈ チャート分析"],["portfolio","◉ ポートフォリオ"],["forecast","◎ GBM予測"],["learn","📚 投資基礎"]].map(([k,l])=>(
           <button key={k} className={`tab-btn ${tab===k?"active":""}`} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </nav>
@@ -1342,6 +1342,109 @@ function App() {
               </div>
             </div>
           </>}
+        </>}
+
+        {/* 投資基礎タブ */}
+        {tab==="learn" && <>
+
+          {/* マインドセット */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #0B1F3A"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0B1F3A",marginBottom:12}}>🧠 投資の心構え（マインドセット）</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[
+                ["📐 投資の三原則","収益性・安全性・流動性のバランスを取ることが大切です。高リターンを狙いすぎると、安全性や現金化のしやすさを犠牲にします。"],
+                ["📅 長期・分散・積立","長い期間かけてコツコツ積み立て、複数の資産に分散することでリスクを大幅に下げられます。最も基本的で最も強力な戦略です。"],
+                ["💰 余裕資金で行う","生活費は絶対に使わないこと。手取りの1〜4割程度を目安に、なくなっても困らない資金だけで投資しましょう。"],
+                ["🤔 自己責任の原則","SNSや口コミだけで動かないこと。情報は必ず自分で確認し、最終判断は自分で行う習慣をつけましょう。"]
+              ].map(([t,d])=>(
+                <div key={t} style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+                  <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:6}}>{t}</div>
+                  <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>{d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 金融商品 */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #3B82F6"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>💹 主な金融商品と仕組み</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[
+                ["株式","#DBEAFE","#1D4ED8","企業の成長や配当（インカムゲイン）を狙う。値上がり益と配当の2つで稼げるのが基本です。"],
+                ["投資信託","#DCFCE7","#16A34A","プロに運用を任せる仕組み。少額から始められ、自動的に分散投資できます。インデックスファンドがおすすめ。"],
+                ["ETF（上場投資信託）","#FEF9C3","#CA8A04","証券取引所でリアルタイムに売買できる投資信託。手数料が安く、流動性が高いのが特徴。"],
+                ["債券","#F3E8FF","#7C3AED","国や企業にお金を貸す仕組み。利率は低めだが安全性が高く、株式のリスク緩和に使われます。"],
+                ["REIT（不動産投資信託）","#FEE2E2","#DC2626","不動産に少額から投資できる仕組み。家賃収入が配当として分配されます。"]
+              ].map(([t,bg,c,d])=>(
+                <div key={t} style={{display:"flex",gap:12,padding:"10px 12px",background:bg,borderRadius:8,alignItems:"flex-start"}}>
+                  <span style={{fontWeight:700,color:c,fontSize:12,minWidth:130}}>{t}</span>
+                  <span style={{fontSize:11,color:"#334155",lineHeight:1.5}}>{d}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 税制 */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #10B981"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>🏦 お得な税制・制度</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{padding:"14px",background:"linear-gradient(135deg,#DCFCE7,#BBF7D0)",borderRadius:12}}>
+                <div style={{fontWeight:700,color:"#15803D",fontSize:13,marginBottom:6}}>🌿 NISA（少額投資非課税）</div>
+                <div style={{fontSize:11,color:"#166534",lineHeight:1.6}}>投資で得た利益に税金がかかりません（通常は約20%課税）。年間360万円まで非課税で投資でき、長期投資に最適です。<br/><strong>→ まず最初に使うべき制度！</strong></div>
+              </div>
+              <div style={{padding:"14px",background:"linear-gradient(135deg,#EFF6FF,#DBEAFE)",borderRadius:12}}>
+                <div style={{fontWeight:700,color:"#1D4ED8",fontSize:13,marginBottom:6}}>💎 iDeCo（個人型確定拠出年金）</div>
+                <div style={{fontSize:11,color:"#1E3A8A",lineHeight:1.6}}>老後資金のための積立制度。掛け金が全額所得控除になるため節税効果が高い。60歳まで引き出せないが、節税メリットが大きい。</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 分析手法 */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #F59E0B"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>🔍 分析の基礎知識</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+                <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:8}}>📊 ファンダメンタルズ分析</div>
+                <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>
+                  企業の財務状況から本質的な価値を判断する方法。<br/>
+                  <strong>PER</strong>（株価収益率）: 低いほど割安<br/>
+                  <strong>PBR</strong>（株価純資産倍率）: 1倍割れは特に割安<br/>
+                  <strong>ROE</strong>（自己資本利益率）: 高いほど効率的な経営<br/>
+                  <strong>配当利回り</strong>: 高いほど安定収入が期待できる
+                </div>
+              </div>
+              <div style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+                <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:8}}>📈 テクニカル分析（このツールで確認）</div>
+                <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>
+                  チャートの動きから売買タイミングを判断する方法。<br/>
+                  <strong>RSI</strong>: 買われすぎ・売られすぎの判断<br/>
+                  <strong>MACD</strong>: トレンドの方向と転換点<br/>
+                  <strong>ボリンジャーバンド</strong>: 価格の変動範囲<br/>
+                  <strong>SMA（移動平均線）</strong>: 中長期トレンド確認
+                </div>
+              </div>
+            </div>
+            <div style={{padding:"10px 14px",background:"#FFF7ED",borderRadius:8,border:"1px solid #FED7AA",marginTop:10,fontSize:11,color:"#9A3412"}}>
+              ⚠️ <strong>重要：</strong>どちらの分析も万能ではありません。両方を組み合わせて、複数の視点から判断することが大切です。
+            </div>
+          </div>
+
+          {/* リスク管理 */}
+          <div className="card" style={{borderLeft:"4px solid #EF4444"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>🛡️ リスク管理の鉄則</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[
+                ["🌍 分散投資","#EFF6FF","資産（株・債券・金など）・地域（日本・米国・新興国）・時間（積立）を分けてリスクを分散。一つが大きく下がっても全体への影響を抑えられます。"],
+                ["✂️ 損切り（ストップロス）","#FFF7ED","損失が拡大する前に売却するルールを事前に決めること。例：「-10%になったら必ず売る」。感情に流されず機械的に実行するのがポイントです。"],
+                ["⚖️ ポートフォリオ管理","#F0FDF4","自分のリスク許容度（どこまで損失に耐えられるか）に合わせて資産の割合を決め、定期的に見直す（リバランス）ことが長期成功の鍵です。"]
+              ].map(([t,bg,d])=>(
+                <div key={t} style={{padding:"12px 14px",background:bg,borderRadius:10,border:"1px solid #E2E8F0"}}>
+                  <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:6}}>{t}</div>
+                  <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>{d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </>}
 
         {/* Footer */}
