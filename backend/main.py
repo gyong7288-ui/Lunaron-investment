@@ -1,0 +1,484 @@
+"""
+Lunaron Investment Dashboard - Backend API
+FastAPI + yfinance + Ollama (Gemma3) ― 完全無料・ローカルLLM版
+
+起動方法:
+  1. Ollama をインストール → https://ollama.com
+  2. モデルをダウンロード: ollama pull gemma3
+  3. Ollama を起動:       ollama serve
+  4. 別ターミナルで backend/ に移動してから:
+       pip install -r requirements.txt
+       uvicorn main:app --reload --port 8000
+"""
+
+import math
+import os
+import requests
+from datetime import datetime
+from typing import Optional
+import pandas as pd
+import numpy as np
+from yahooquery import Ticker
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+# frontend/index.html へのパスを解決（backend/ から実行した場合）
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
+
+
+# ─── Hugging Face Inference API ──────────────────────────────────────────────
+
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+
+def hf_chat(prompt: str) -> str:
+    """Hugging Face Inference APIを利用してテキスト生成"""
+    try:
+        model_url = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct"
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"} if HF_TOKEN else {}
+        
+        payload = {
+            "inputs": f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n",
+            "parameters": {
+                "max_new_tokens": 500,
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "return_full_text": False
+            }
+        }
+        
+        res = requests.post(model_url, headers=headers, json=payload, timeout=30)
+        
+        if res.status_code == 200:
+            result = res.json()
+            if isinstance(result, list) and len(result) > 0:
+                return result[0].get("generated_text", "").strip()
+        
+        return f"【AI分析エラー】Hugging Face APIから応答がありません (Status {res.status_code})."
+    except Exception as e:
+        print(f"HF API Error: {e}")
+        return "【通信エラー】AIサーバーへの接続に失敗しました。"
+
+
+# ─── App setup ────────────────────────────────────────────────────────────────
+
+app = FastAPI(title="Lunaron Investment API", version="4.0-hf")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ─── Ticker 定義 ─────────────────────────────────────────────────────────────
+
+TICKERS = {
+    # PayPayポイント運用向け
+    "GLD":  {"name": "金 (ゴールド)", "yf": "GLD",  "col": "#F59E0B", "base": 210, "seed": 101, "cat": "PayPay"},
+    "QQQ":  {"name": "テクノロジー (QQQ)", "yf": "QQQ",  "col": "#3B82F6", "base": 440, "seed": 102, "cat": "PayPay/NISA"},
+    "SQQQ": {"name": "逆回転 (ベア)", "yf": "SQQQ", "col": "#EF4444", "base": 12,  "seed": 103, "cat": "PayPay"},
+    "TQQQ": {"name": "米国10倍 (ブル)", "yf": "TQQQ", "col": "#10B981", "base": 60,  "seed": 104, "cat": "PayPay"},
+    "VOO":  {"name": "スタンダード (S&P500)", "yf": "VOO",  "col": "#6366F1", "base": 470, "seed": 105, "cat": "PayPay/NISA"},
+    
+    # NISA / 一般証券向け追加銘柄
+    "ACWI": {"name": "全世界株 (オルカン)", "yf": "ACWI", "col": "#8B5CF6", "base": 110, "seed": 106, "cat": "NISA"},
+    "SOXX": {"name": "半導体株 (SOXX)", "yf": "SOXX", "col": "#2DD4BF", "base": 220, "seed": 107, "cat": "NISA"},
+    "VT":   {"name": "米国以外 (VT)", "yf": "VT",   "col": "#F43F5E", "base": 105, "seed": 108, "cat": "NISA"},
+    "EPI":  {"name": "インド株 (EPI)", "yf": "EPI",  "col": "#FB923C", "base": 42,  "seed": 109, "cat": "NISA"},
+    "DIA":  {"name": "NYダウ (DIA)", "yf": "DIA",  "col": "#0EA5E9", "base": 390, "seed": 110, "cat": "NISA"},
+}
+
+
+# ─── 数学的インジケーター計算 ─────────────────────────────────────────────────
+
+def calc_ema(prices: list[float], period: int) -> list[float]:
+    k = 2 / (period + 1)
+    ema = [prices[0]]
+    for p in prices[1:]:
+        ema.append(p * k + ema[-1] * (1 - k))
+    return ema
+
+
+def calc_rsi(prices: list[float], period: int = 14) -> list[Optional[float]]:
+    changes = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
+    rsi: list[Optional[float]] = [None] * period
+    gains  = [max(c, 0) for c in changes[:period]]
+    losses = [max(-c, 0) for c in changes[:period]]
+    avg_gain = sum(gains) / period
+    avg_loss = sum(losses) / period
+
+    for i in range(period, len(changes)):
+        gain = max(changes[i], 0)
+        loss = max(-changes[i], 0)
+        avg_gain = (avg_gain * (period - 1) + gain) / period
+        avg_loss = (avg_loss * (period - 1) + loss) / period
+        rs = float("inf") if avg_loss == 0 else avg_gain / avg_loss
+        rsi.append(100 - 100 / (1 + rs))
+
+    return rsi
+
+
+def calc_macd(prices: list[float]):
+    ema12 = calc_ema(prices, 12)
+    ema26 = calc_ema(prices, 26)
+    macd_line   = [ema12[i] - ema26[i] for i in range(len(prices))]
+    signal_line = calc_ema(macd_line, 9)
+    histogram   = [macd_line[i] - signal_line[i] for i in range(len(prices))]
+    return macd_line, signal_line, histogram
+
+
+def calc_bollinger(prices: list[float], period: int = 20):
+    upper, middle, lower = [], [], []
+    for i in range(len(prices)):
+        if i < period - 1:
+            upper.append(None); middle.append(None); lower.append(None)
+            continue
+        window = prices[i - period + 1: i + 1]
+        m   = sum(window) / period
+        std = math.sqrt(sum((x - m) ** 2 for x in window) / period)
+        upper.append(m + 2 * std)
+        middle.append(m)
+        lower.append(m - 2 * std)
+    return upper, middle, lower
+
+
+def calc_sharpe(prices: list[float], risk_free: float = 0.045) -> float:
+    returns = [(prices[i] - prices[i - 1]) / prices[i - 1] for i in range(1, len(prices))]
+    if not returns:
+        return 0.0
+    ann_return = (sum(returns) / len(returns)) * 252
+    ann_vol = (sum((r - ann_return / 252) ** 2 for r in returns) / len(returns)) ** 0.5 * math.sqrt(252)
+    return (ann_return - risk_free) / ann_vol if ann_vol != 0 else 0.0
+
+
+def gbm_forecast(prices: list[float], sim_count: int = 500, days: int = 7) -> dict:
+    """幾何ブラウン運動モデル: dS = μS dt + σS dW"""
+    log_returns = [math.log(prices[i] / prices[i - 1]) for i in range(1, len(prices))]
+    mu       = sum(log_returns) / len(log_returns)
+    variance = sum((r - mu) ** 2 for r in log_returns) / len(log_returns)
+    sigma    = math.sqrt(variance)
+    S0, dt   = prices[-1], 1 / 252
+
+    rng   = np.random.default_rng(42)
+    paths = []
+    for _ in range(sim_count):
+        path = [S0]
+        for _ in range(days):
+            z = rng.standard_normal()
+            path.append(path[-1] * math.exp((mu - 0.5 * variance) * dt + sigma * math.sqrt(dt) * z))
+        paths.append(path)
+
+    result = []
+    for d in range(days + 1):
+        vals = sorted(p[d] for p in paths)
+        n    = len(vals)
+        result.append({
+            "day": "現在" if d == 0 else f"+{d}日",
+            "p10": vals[int(n * 0.10)],
+            "p25": vals[int(n * 0.25)],
+            "p50": vals[int(n * 0.50)],
+            "p75": vals[int(n * 0.75)],
+            "p90": vals[int(n * 0.90)],
+        })
+
+    return {
+        "forecast":           result,
+        "annual_volatility":  sigma * math.sqrt(252),
+        "annual_drift":       mu * 252,
+    }
+
+
+def compute_signal(rsi_val, macd_hist, close, upper, lower) -> str:
+    score = 0
+    if rsi_val is not None:
+        if   rsi_val < 30:  score += 2
+        elif rsi_val < 45:  score += 1
+        elif rsi_val > 70:  score -= 2
+        elif rsi_val > 60:  score -= 1
+    if macd_hist > 0: score += 1
+    else:             score -= 1
+    if lower and close < lower * 1.02: score += 1
+    if upper and close > upper * 0.98: score -= 1
+    return "BUY" if score >= 2 else "SELL" if score <= -2 else "HOLD"
+
+
+# ─── Pydantic モデル ──────────────────────────────────────────────────────────
+
+class AnalyzeRequest(BaseModel):
+    ticker_id: str
+    query: Optional[str] = None
+
+
+class PortfolioHolding(BaseModel):
+    ticker:    str
+    name:      str
+    qty:       float
+    buy_price: float
+
+
+class PortfolioRequest(BaseModel):
+    holdings: list[PortfolioHolding]
+
+
+# ─── エンドポイント ───────────────────────────────────────────────────────────
+
+@app.get("/api/tickers")
+def get_tickers():
+    return {"tickers": [{"id": k, **v} for k, v in TICKERS.items()]}
+
+
+@app.get("/api/indicators/{ticker_id}")
+def get_indicators(ticker_id: str, period: str = "3mo"):
+    """市場データを取得。失敗した場合はフォールバックデータを返す。"""
+    meta = TICKERS.get(ticker_id)
+    if not meta:
+        raise HTTPException(404, f"Ticker '{ticker_id}' not found")
+
+    try:
+        t = Ticker(meta["yf"])
+        hist = t.history(period=period, interval="1d")
+        
+        if hist is None or (isinstance(hist, pd.DataFrame) and hist.empty):
+            raise ValueError("Empty data from yahooquery")
+            
+        if isinstance(hist, pd.DataFrame):
+            hist = hist.reset_index()
+            hist = hist.rename(columns={"date": "Date", "open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"})
+            hist.set_index("Date", inplace=True)
+        
+        closes = hist["Close"].astype(float).tolist()
+        dates  = [d.strftime("%-m/%-d") for d in hist.index]
+        
+        rsi_arr                        = calc_rsi(closes)
+        macd_line, macd_sig, macd_hist = calc_macd(closes)
+        bb_upper, bb_mid, bb_lower     = calc_bollinger(closes)
+        sharpe                         = calc_sharpe(closes)
+        gbm                            = gbm_forecast(closes)
+        
+        is_fallback = False
+    except Exception as e:
+        base = meta.get("base", 200)
+        seed = meta.get("seed", 42)
+        import random
+        random.seed(seed)
+        closes = [base]
+        for _ in range(89):
+            closes.append(closes[-1] * (1 + (random.random() - 0.48) * 0.03))
+        
+        dates = [(datetime.now().replace(day=1) if i==0 else datetime.now()).strftime("%m/%d") for i in range(90)]
+        
+        rsi_arr                        = calc_rsi(closes)
+        macd_line, macd_sig, macd_hist = calc_macd(closes)
+        bb_upper, bb_mid, bb_lower     = calc_bollinger(closes)
+        sharpe                         = 0.5
+        gbm                            = gbm_forecast(closes)
+        is_fallback = True
+
+    chart_data = []
+    for i in range(len(closes)):
+        chart_data.append({
+            "date":    dates[i],
+            "close":   round(closes[i], 2),
+            "rsi":     round(rsi_arr[i], 1) if i < len(rsi_arr) and rsi_arr[i] is not None else None,
+            "macd":    round(macd_line[i], 4) if i < len(macd_line) else 0,
+            "macdSig": round(macd_sig[i], 4) if i < len(macd_sig) else 0,
+            "hist":    round(macd_hist[i], 4) if i < len(macd_hist) else 0,
+            "upper":   round(bb_upper[i], 4) if i < len(bb_upper) and bb_upper[i] is not None else None,
+            "middle":  round(bb_mid[i], 4) if i < len(bb_mid) and bb_mid[i] is not None else None,
+            "lower":   round(bb_lower[i], 4) if i < len(bb_lower) and bb_lower[i] is not None else None,
+        })
+
+    latest  = chart_data[-1]
+    prev    = chart_data[-2]
+    chg_pct = round((latest["close"] - prev["close"]) / prev["close"] * 100, 2)
+    signal  = compute_signal(latest["rsi"], latest["hist"], latest["close"], latest["upper"], latest["lower"])
+
+    current_rsi = latest.get("rsi") if latest.get("rsi") is not None else 50
+    fg_val = 100 - current_rsi 
+    fg_label = "Extreme Fear" if fg_val<25 else "Fear" if fg_val<45 else "Greed" if fg_val>75 else "Neutral"
+    cape = 32.5 + (current_rsi-50)*0.1 
+    cape_status = "過熱" if cape>30 else "適正" if cape>20 else "割安"
+    
+    expert_tip = "航路を守りましょう。不必要な売買は利益を削るだけです。"
+    if fg_val < 30: expert_tip = "【絶好の仕込み時】データが極度の恐怖を示しています。バーゲンセールを逃さないでください。"
+    elif fg_val > 70: expert_tip = "市場は楽観に包まれています。今は冷静に、利益確定を検討する時期かもしれません。"
+    
+    memo = f"RSIは{current_rsi:.1f}。{fg_label}圏内です。"
+    if is_fallback: memo += " (※現在は市場データ取得エラーのため予測値です)"
+
+    return {
+        "ticker_id":   ticker_id,
+        "name":        meta["name"],
+        "color":       meta["col"],
+        "chartData":   chart_data,
+        "latest":      latest,
+        "change_pct":  chg_pct,
+        "sharpe":      round(sharpe, 3),
+        "signal":      signal,
+        "gbm":         gbm,
+        "is_fallback": is_fallback,
+        "expert": {
+            "fg_val": round(fg_val),
+            "fg_label": fg_label,
+            "cape": round(cape, 1),
+            "cape_status": cape_status,
+            "tip": expert_tip,
+            "memo": memo
+        }
+    }
+
+
+@app.post("/api/analyze")
+def analyze_ticker(req: AnalyzeRequest):
+    """Hugging Face (Qwen2.5) でテクニカル分析コメントを生成"""
+    try:
+        data     = get_indicators(req.ticker_id)
+        latest   = data["latest"]
+        gbm_vals = data["gbm"]["forecast"][-1]
+        ex = data.get("expert", {})
+        
+        prompt = f"""あなたは投資の専門家です。以下のデータに基づき、投資家へアドバイスしてください。
+
+【市場データ: {data['name']} ({req.ticker_id})】
+現在価格: {latest['close']:.2f} | RSI(14): {latest['rsi']}
+シラーPER: {ex.get('cape')} ({ex.get('cape_status')})
+心理指数: {ex.get('fg_val')} ({ex.get('fg_label')})
+
+【指示】
+1. 現在のバリュエーションと市場心理に基づき、バーゲンセールか過熱状態かを判断してください。
+2. 長期投資の重要性を説いてください。
+3. ユーザー質問: {req.query or 'なし'}
+回答は、①テクニカル根拠 ②専門家の視点 ③推奨アクション の3点で、300文字以内でお願いします。"""
+
+        analysis = hf_chat(prompt)
+        return {"signal": data["signal"], "analysis": analysis, "is_fallback": data["is_fallback"]}
+    except Exception as e:
+        return {"signal": "HOLD", "analysis": f"分析実行エラー: {str(e)}", "is_fallback": True}
+
+
+@app.post("/api/portfolio/analyze")
+def analyze_portfolio(req: PortfolioRequest):
+    """保有ポートフォリオ全体を Ollama (Gemma3) で診断"""
+    if not req.holdings:
+        raise HTTPException(400, "holdings is empty")
+
+    rows       = []
+    total_cost = 0.0
+    total_val  = 0.0
+
+    for h in req.holdings:
+        meta = TICKERS.get(h.ticker)
+        if not meta:
+            continue
+        try:
+            t = Ticker(meta["yf"])
+            hist = t.history(period="5d", interval="1d")
+            if isinstance(hist, pd.DataFrame) and not hist.empty:
+                cur = float(hist.reset_index()["close"].iloc[-1])
+            else:
+                cur = h.buy_price
+        except Exception:
+            cur = h.buy_price
+
+        cost    = h.qty * h.buy_price
+        val     = h.qty * cur
+        pnl     = val - cost
+        pnl_pct = (pnl / cost * 100) if cost else 0
+
+        total_cost += cost
+        total_val  += val
+        rows.append(
+            f"  - {h.name}({h.ticker}): "
+            f"取得${h.buy_price:.2f} → 現在${cur:.2f} / "
+            f"損益 {pnl_pct:+.1f}% ({pnl:+,.0f}円換算)"
+        )
+
+    total_pnl     = total_val - total_cost
+    total_pnl_pct = (total_pnl / total_cost * 100) if total_cost else 0
+
+    prompt = f"""あなたはプロの投資アドバイザー「Lunaron AI」です。
+以下のポートフォリオを分析し、日本語で具体的なアドバイスを提供してください（400文字以内）。
+
+【現在のポートフォリオ】
+{chr(10).join(rows)}
+
+合計投資額: ¥{total_cost:,.0f}
+合計現在価値: ¥{total_val:,.0f}
+合計損益: {total_pnl_pct:+.1f}% ({total_pnl:+,.0f}円)
+
+以下の点について具体的にアドバイスしてください:
+① 各銘柄の判断（継続保有/利益確定/損切り検討）
+② ポートフォリオ全体のリスク評価
+③ 次にすべき具体的なアクション"""
+
+    analysis = ollama_chat(prompt)
+    return {
+        "total_cost":    round(total_cost, 2),
+        "total_val":     round(total_val, 2),
+        "total_pnl":     round(total_pnl, 2),
+        "total_pnl_pct": round(total_pnl_pct, 2),
+        "analysis":      analysis,
+    }
+
+
+# ─── ヘルスチェック ───────────────────────────────────────────────────────────
+
+# ─── 静的ファイル配信 ─────────────────────────────────────────────────────────
+
+# ライブラリ等をローカルから配信
+if os.path.exists(os.path.join(FRONTEND_DIR, "lib")):
+    app.mount("/lib", StaticFiles(directory=os.path.join(FRONTEND_DIR, "lib")), name="lib")
+
+
+@app.get("/")
+def root():
+    index_path = os.path.join(FRONTEND_DIR, "index.html")
+    if not os.path.exists(index_path):
+        return {"error": f"Frontend index.html not found at {index_path}. Check your directory structure."}
+    return FileResponse(index_path)
+
+
+@app.get("/api/health")
+def health():
+    # 簡易的にドル円レートを取得
+    try:
+        t = Ticker("JPY=X")
+        hist = t.history(period="1d")
+        if isinstance(hist, pd.DataFrame) and not hist.empty:
+            # yahooquery の形式に合わせて取得
+            usdjpy = hist.reset_index()["close"].iloc[-1]
+        else:
+            usdjpy = 150.0
+    except:
+        usdjpy = 150.0
+    return {
+        "status": "ok", 
+        "app": "Lunaron Investment API v3 (Ollama)",
+        "usdjpy": round(float(usdjpy), 2)
+    }
+
+
+@app.get("/api/ollama/status")
+def ollama_status():
+    """Ollama の接続確認"""
+    try:
+        resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
+        models = [m["name"] for m in resp.json().get("models", [])]
+        gemma_ready = any(OLLAMA_MODEL in m for m in models)
+        return {
+            "ollama_running": True,
+            "available_models": models,
+            "gemma3_ready": gemma_ready,
+            "message": "OK" if gemma_ready else f"`ollama pull {OLLAMA_MODEL}` を実行してください",
+        }
+    except Exception:
+        return {
+            "ollama_running": False,
+            "message": "`ollama serve` を実行してください",
+        }
