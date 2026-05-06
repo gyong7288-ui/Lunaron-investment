@@ -835,9 +835,17 @@ function App() {
             )}
             <div className="legend-row">
               <span><span className="legend-dot" style={{background:col}}/>終値</span>
-              <span><span className="legend-dot" style={{background:"#BFDBFE"}}/>ボリンジャー (±2σ)</span>
-              <span><span className="legend-dot" style={{background:"#F59E0B"}}/>SMA50</span>
-              <span><span className="legend-dot" style={{background:"#EF4444"}}/>SMA200</span>
+              <span style={{display:"flex", alignItems:"center"}}>
+                <span className="legend-dot" style={{background:"#BFDBFE"}}/>ボリンジャー (±2σ)
+              </span>
+              <span style={{display:"flex", alignItems:"center"}}>
+                <span className="legend-dot" style={{background:"#F59E0B"}}/>SMA50
+                <span className="help-tip" data-tip="過去50日間の平均価格（中期トレンド）。この線より上なら上昇傾向。">?</span>
+              </span>
+              <span style={{display:"flex", alignItems:"center"}}>
+                <span className="legend-dot" style={{background:"#EF4444"}}/>SMA200
+                <span className="help-tip" data-tip="過去200日間の平均価格（長期トレンド）。大局的な強気/弱気相場の判断に使います。">?</span>
+              </span>
             </div>
           </div>
 
@@ -896,7 +904,10 @@ function App() {
 
               {/* BB state */}
               <div className="card" style={{marginTop:10,padding:"14px 16px"}}>
-                <div className="metric-label" style={{marginBottom:8}}>ボリンジャーバンド現在値</div>
+                <div className="metric-label" style={{marginBottom:8}}>
+                  ボリンジャーバンド現在値
+                  <span className="help-tip" data-tip="価格の約95%が収まる「帯」です。上のバンドに触れると割高、下のバンドに触れると割安と判断されます。">?</span>
+                </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                   {[["上限",latest?.upper,"#DBEAFE","#1D4ED8"],["中心",latest?.middle,"#F1F5F9","#475569"],["下限",latest?.lower,"#DCFCE7","#16A34A"]].map(([l,v,bg,c])=>(
                     <div key={l} style={{background:bg,borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
@@ -978,15 +989,17 @@ function App() {
               {/* Quant summary */}
               <hr className="divider"/>
               <div className="metric-label">定量指標サマリー</div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
                 {[
-                  ["RSI値",     latest?.rsi?.toFixed(1)??"—", latest?.rsi>70?"#DC2626":latest?.rsi<30?"#16A34A":"#0B1F3A"],
-                  ["MACD方向",  latest?.hist>0?"強気 ↗":"弱気 ↘", latest?.hist>0?"#16A34A":"#DC2626"],
-                  ["前日比",    d?`${d.change_pct>=0?"+":""}${d.change_pct}%`:"—", d?.change_pct>=0?"#16A34A":"#DC2626"],
-                  ["シャープ比", d?.sharpe?.toFixed(2)??"—", d?.sharpe>1?"#16A34A":d?.sharpe<0?"#DC2626":"#0B1F3A"],
-                ].map(([k,v,c])=>(
+                  ["RSI値",     latest?.rsi?.toFixed(1)??"—", latest?.rsi>70?"#DC2626":latest?.rsi<30?"#16A34A":"#0F172A", "買われすぎ・売られすぎを示す指標です。70以上は過熱（売りサイン）、30以下は売られすぎ（買いサイン）とされます。"],
+                  ["MACD方向",  latest?.hist>0?"強気 ↗":"弱気 ↘", latest?.hist>0?"#16A34A":"#DC2626", "トレンドの方向性を示す指標です。「強気」は上昇トレンド、「弱気」は下落トレンドを示唆します。"],
+                  ["前日比",    d?`${d.change_pct>=0?"+":""}${d.change_pct}%`:"—", d?.change_pct>=0?"#16A34A":"#DC2626", "直近の終値と1日前の終値の変動率です。"],
+                  ["シャープ比", d?.sharpe?.toFixed(2)??"—", d?.sharpe>1?"#16A34A":d?.sharpe<0?"#DC2626":"#0F172A", "投資の「効率の良さ」を示します。1.0以上なら優秀、マイナスはリスクに見合っていない状態です。"],
+                ].map(([k,v,c,tip])=>(
                   <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
-                    <span style={{color:"#94A3B8"}}>{k}</span>
+                    <span style={{color:"#64748B", display:"flex", alignItems:"center"}}>
+                      {k}
+                      <span className="help-tip" data-tip={tip}>?</span>
+                    </span>
                     <span style={{fontWeight:600,color:c}}>{v}</span>
                   </div>
                 ))}
