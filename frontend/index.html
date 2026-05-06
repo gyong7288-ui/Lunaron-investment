@@ -33,7 +33,7 @@
 html { font-size: 16px; }
 body {
   font-family: 'Helvetica Neue', 'Hiragino Sans', 'Meiryo', Arial, sans-serif;
-  background: #F2F4F7;
+  background: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%);
   color: #0B1F3A;
   min-height: 100vh;
 }
@@ -85,21 +85,30 @@ input, select { font-family: inherit; }
 
 /* ── Cards ── */
 .card {
-  background: #fff; border: 1px solid #E9EEF4;
-  border-radius: 12px; padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255,255,255,0.8);
+  border-radius: 16px; padding: 18px 24px;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
-.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
 .metric-card {
-  background: #fff; border: 1px solid #E9EEF4;
-  border-radius: 10px; padding: 13px 16px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
+  border: 1px solid rgba(255,255,255,0.8);
+  border-radius: 14px; padding: 16px 18px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.metric-card:hover {
+  transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.06);
 }
 .metric-label {
-  font-size: 10px; font-weight: 600; letter-spacing: .9px;
-  text-transform: uppercase; color: #94A3B8; margin-bottom: 4px;
+  font-size: 11px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: #64748B; margin-bottom: 6px;
   display: flex; align-items: center;
 }
-.metric-value { font-size: 18px; font-weight: 600; letter-spacing: -.5px; }
-.metric-sub { font-size: 11px; margin-top: 4px; }
+.metric-value { font-size: 20px; font-weight: 600; letter-spacing: -.5px; color: #0F172A; }
+.metric-sub { font-size: 11px; margin-top: 4px; color: #64748B; }
 
 /* ── Tooltips ── */
 .help-tip {
@@ -215,11 +224,16 @@ input, select { font-family: inherit; }
 }
 
 /* ── Chart panels ── */
-.chart-panel { background: #fff; border: 1px solid #E9EEF4; border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
-.chart-title { font-size: 13px; font-weight: 600; color: #0B1F3A; margin-bottom: 4px; }
-.chart-sub { font-size: 11px; color: #94A3B8; margin-bottom: 10px; }
-.legend-row { display: flex; align-items: center; gap: 14px; font-size: 11px; color: #94A3B8; margin-top: 8px; flex-wrap: wrap; }
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.chart-panel { 
+  background: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.8); 
+  border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; 
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.03);
+  backdrop-filter: blur(12px);
+}
+.chart-title { font-size: 14px; font-weight: 600; color: #0F172A; margin-bottom: 6px; }
+.chart-sub { font-size: 11px; color: #64748B; margin-bottom: 14px; }
+.legend-row { display: flex; align-items: center; gap: 16px; font-size: 11px; color: #64748B; margin-top: 12px; flex-wrap: wrap; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
 
 /* ── API Key panel ── */
 .api-panel {
@@ -813,14 +827,17 @@ function App() {
                   <Line type="monotone" dataKey="upper"  stroke="#BFDBFE" strokeWidth={1} dot={false} name="BB上限"/>
                   <Line type="monotone" dataKey="middle" stroke="#CBD5E1" strokeWidth={1} dot={false} strokeDasharray="4 2" name="MA20"/>
                   <Line type="monotone" dataKey="lower"  stroke="#BFDBFE" strokeWidth={1} dot={false} name="BB下限"/>
+                  <Line type="monotone" dataKey="sma50"  stroke="#F59E0B" strokeWidth={1.5} dot={false} strokeDasharray="3 3" name="SMA50"/>
+                  <Line type="monotone" dataKey="sma200" stroke="#EF4444" strokeWidth={1.5} dot={false} strokeDasharray="5 5" name="SMA200"/>
                   <Line type="monotone" dataKey="close"  stroke={col} strokeWidth={2.5} dot={false} name="終値"/>
                 </ComposedChart>
               </ResponsiveContainer>
             )}
             <div className="legend-row">
               <span><span className="legend-dot" style={{background:col}}/>終値</span>
-              <span><span className="legend-dot" style={{background:"#BFDBFE"}}/>ボリンジャーバンド (±2σ)</span>
-              <span><span className="legend-dot" style={{background:"#CBD5E1"}}/>MA20 (中心線)</span>
+              <span><span className="legend-dot" style={{background:"#BFDBFE"}}/>ボリンジャー (±2σ)</span>
+              <span><span className="legend-dot" style={{background:"#F59E0B"}}/>SMA50</span>
+              <span><span className="legend-dot" style={{background:"#EF4444"}}/>SMA200</span>
             </div>
           </div>
 
@@ -895,20 +912,56 @@ function App() {
             <div className="card" style={{display:"flex",flexDirection:"column",gap:10}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
-                  <div style={{fontSize:13,fontWeight:600}}>Lunaron AI 分析</div>
-                  <div style={{fontSize:10,color:"#94A3B8",marginTop:2}}>{tick.name}</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#0F172A"}}>Lunaron AI 分析</div>
+                  <div style={{fontSize:11,color:"#64748B",marginTop:2}}>{tick.name}</div>
                 </div>
-                {signal && (
-                  <span className={`signal-badge s-${signal.toLowerCase()}`}>
-                    {signal==="BUY"?"▲ BUY":signal==="SELL"?"▼ SELL":"— HOLD"}
-                  </span>
-                )}
               </div>
-              <div className="ai-box" style={{flex:1}}>
+
+              {/* Trend Gauge */}
+              {signal && (
+                <div style={{margin:"8px 0"}}>
+                  <div style={{display:"flex", justifyContent:"space-between", fontSize:10, color:"#64748B", fontWeight:600, marginBottom:4}}>
+                    <span>弱気 (SELL)</span>
+                    <span>中立 (HOLD)</span>
+                    <span>強気 (BUY)</span>
+                  </div>
+                  <div style={{height:10, background:"linear-gradient(90deg, #EF4444 0%, #F59E0B 50%, #10B981 100%)", borderRadius:10, position:"relative"}}>
+                    <div style={{
+                      position:"absolute", top:-3, width:16, height:16, borderRadius:"50%", background:"#fff", border:"3px solid #0F172A",
+                      left: signal==="BUY" ? "85%" : signal==="SELL" ? "15%" : "50%", transform:"translateX(-50%)", transition:"left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      boxShadow:"0 2px 4px rgba(0,0,0,0.2)"
+                    }}></div>
+                  </div>
+                </div>
+              )}
+
+              <div className="ai-box" style={{flex:1, padding: analysis ? "0" : "12px", background: analysis ? "transparent" : "#F8FAFC", border: analysis ? "none" : "1px solid #E2E8F0"}}>
                 {analysisLoading
                   ? <div className="thinking"><div className="thinking-dot"/><div className="thinking-dot"/><div className="thinking-dot"/><span className="thinking-text">分析中...</span></div>
                   : analysis
-                    ? <span>{analysis}</span>
+                    ? (
+                        <div style={{display:"flex", flexDirection:"column", gap:8}}>
+                          {analysis.split("### ").filter(b => b.trim()).map((block, i) => {
+                            if (!block.includes("【")) return <span key={i}>{block}</span>;
+                            const parts = block.split('\n');
+                            const title = parts[0].trim();
+                            const content = parts.slice(1).join('\n').trim();
+                            let icon = "💬", color = "#1D4ED8", bg = "#EFF6FF";
+                            if (title.includes("結論")) { icon = "🎯"; color = "#16A34A"; bg = "#DCFCE7"; }
+                            else if (title.includes("根拠")) { icon = "📊"; color = "#0B1F3A"; bg = "#F1F5F9"; }
+                            else if (title.includes("リスク")) { icon = "⚠️"; color = "#DC2626"; bg = "#FEE2E2"; }
+                            
+                            return (
+                              <div key={i} style={{padding:"10px 12px", background:bg, borderRadius:8, borderLeft:`3px solid ${color}`}}>
+                                <div style={{fontWeight:600, fontSize:12, color:color, marginBottom:4, display:"flex", alignItems:"center", gap:6}}>
+                                  <span>{icon}</span> {title}
+                                </div>
+                                <div style={{fontSize:11, color:"#334155", whiteSpace:"pre-wrap", lineHeight:1.5}}>{content}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )
                     : <span className="ai-placeholder">
                         指標に基づいた分析を行います。個別の質問がある場合は下に入力してください。
                       </span>
@@ -966,6 +1019,47 @@ function App() {
               </div>
             ))}
           </div>
+
+          {/* Asset Allocation Pie Chart */}
+          {pfData.length > 0 && (
+            <div className="card" style={{marginBottom:15, display:"flex", alignItems:"center", gap:20}}>
+              <div style={{flex:1}}>
+                <div className="metric-label" style={{marginBottom:10}}>アセットアロケーション (配分比率)</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie
+                      data={pfData}
+                      dataKey="currentVal"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={2}
+                    >
+                      {pfData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(val, name) => [fmtYen(val), name]} contentStyle={{fontSize:11, borderRadius:8, border:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)"}}/>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{flex:1, display:"flex", flexDirection:"column", gap:8}}>
+                {pfData.slice().sort((a,b)=>b.currentVal - a.currentVal).map((h, i) => (
+                  <div key={h.id} style={{display:"flex", alignItems:"center", justifyContent:"space-between", fontSize:11}}>
+                    <div style={{display:"flex", alignItems:"center", gap:6}}>
+                      <div style={{width:8, height:8, borderRadius:"50%", background:PIE_COLORS[pfData.indexOf(h) % PIE_COLORS.length]}}></div>
+                      <span style={{fontWeight:500}}>{h.name}</span>
+                    </div>
+                    <div>
+                      <span style={{fontWeight:600}}>{((h.currentVal / totalVal) * 100).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Holdings Sections */}
           {["PayPay", "NISA"].map(section => {

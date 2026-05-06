@@ -147,6 +147,11 @@ def calc_bollinger(prices: list[float], period: int = 20):
         lower.append(m - 2 * std)
     return upper, middle, lower
 
+def calc_sma(prices: list[float], window: int) -> list[float]:
+    s = pd.Series(prices)
+    res = s.rolling(window=window, min_periods=1).mean().tolist()
+    return [x if not pd.isna(x) else None for x in res]
+
 
 def calc_sharpe(prices: list[float], risk_free: float = 0.045) -> float:
     returns = [(prices[i] - prices[i - 1]) / prices[i - 1] for i in range(1, len(prices))]
@@ -253,7 +258,9 @@ def get_indicators(ticker_id: str, period: str = "3mo"):
             hist.set_index("Date", inplace=True)
         
         closes = hist["Close"].astype(float).tolist()
-        dates  = [d.strftime("%-m/%-d") for d in hist.index]
+        
+        # Windows環境での strftime("%-m") エラーを回避するため、直接 month/day をフォーマットする
+        dates = [f"{pd.to_datetime(d).month}/{pd.to_datetime(d).day}" for d in hist.index]
         
         rsi_arr                        = calc_rsi(closes)
         macd_line, macd_sig, macd_hist = calc_macd(closes)
@@ -280,18 +287,24 @@ def get_indicators(ticker_id: str, period: str = "3mo"):
         gbm                            = gbm_forecast(closes)
         is_fallback = True
 
+    # ---- 追加のテクニカル指標計算 (SMA) ----
+    sma50  = calc_sma(closes, 50)
+    sma200 = calc_sma(closes, 200)
+
     chart_data = []
     for i in range(len(closes)):
         chart_data.append({
-            "date":    dates[i],
+            "date":    dates[i] if i < len(dates) else f"Day {i}",
             "close":   round(closes[i], 2),
-            "rsi":     round(rsi_arr[i], 1) if i < len(rsi_arr) and rsi_arr[i] is not None else None,
-            "macd":    round(macd_line[i], 4) if i < len(macd_line) else 0,
-            "macdSig": round(macd_sig[i], 4) if i < len(macd_sig) else 0,
-            "hist":    round(macd_hist[i], 4) if i < len(macd_hist) else 0,
-            "upper":   round(bb_upper[i], 4) if i < len(bb_upper) and bb_upper[i] is not None else None,
-            "middle":  round(bb_mid[i], 4) if i < len(bb_mid) and bb_mid[i] is not None else None,
-            "lower":   round(bb_lower[i], 4) if i < len(bb_lower) and bb_lower[i] is not None else None,
+            "rsi":     round(rsi_arr[i], 1) if i < len(rsi_arr) and rsi_arr[i] is not None and not pd.isna(rsi_arr[i]) else None,
+            "macd":    round(macd_line[i], 4) if i < len(macd_line) and macd_line[i] is not None and not pd.isna(macd_line[i]) else 0,
+            "macdSig": round(macd_sig[i], 4) if i < len(macd_sig) and macd_sig[i] is not None and not pd.isna(macd_sig[i]) else 0,
+            "hist":    round(macd_hist[i], 4) if i < len(macd_hist) and macd_hist[i] is not None and not pd.isna(macd_hist[i]) else 0,
+            "upper":   round(bb_upper[i], 4) if i < len(bb_upper) and bb_upper[i] is not None and not pd.isna(bb_upper[i]) else None,
+            "middle":  round(bb_mid[i], 4) if i < len(bb_mid) and bb_mid[i] is not None and not pd.isna(bb_mid[i]) else None,
+            "lower":   round(bb_lower[i], 4) if i < len(bb_lower) and bb_lower[i] is not None and not pd.isna(bb_lower[i]) else None,
+            "sma50":   round(sma50[i], 4) if i < len(sma50) and sma50[i] is not None and not pd.isna(sma50[i]) else None,
+            "sma200":  round(sma200[i], 4) if i < len(sma200) and sma200[i] is not None and not pd.isna(sma200[i]) else None,
         })
 
     latest  = chart_data[-1]
@@ -354,7 +367,15 @@ def analyze_ticker(req: AnalyzeRequest):
 1. 現在のバリュエーションと市場心理に基づき、バーゲンセールか過熱状態かを判断してください。
 2. 長期投資の重要性を説いてください。
 3. ユーザー質問: {req.query or 'なし'}
-回答は、①テクニカル根拠 ②専門家の視点 ③推奨アクション の3点で、300文字以内でお願いします。"""
+回答は、以下のマークダウン形式（【結論】【根拠】【リスク】）で、それぞれ短く簡潔に（全体で300文字以内）出力してください。
+
+### 【結論】
+(ここに具体的な推奨アクション)
+### 【根拠】
+(ここにテクニカルやバリュエーションの理由)
+### 【リスク】
+(ここに長期投資の注意点)
+"""
 
         analysis = hf_chat(prompt)
         return {"signal": data["signal"], "analysis": analysis, "is_fallback": data["is_fallback"]}
@@ -465,20 +486,10 @@ def health():
 
 
 @app.get("/api/ollama/status")
-def ollama_status():
-    """Ollama の接続確認"""
-    try:
-        resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
-        models = [m["name"] for m in resp.json().get("models", [])]
-        gemma_ready = any(OLLAMA_MODEL in m for m in models)
-        return {
-            "ollama_running": True,
-            "available_models": models,
-            "gemma3_ready": gemma_ready,
-            "message": "OK" if gemma_ready else f"`ollama pull {OLLAMA_MODEL}` を実行してください",
-        }
-    except Exception:
-        return {
-            "ollama_running": False,
-            "message": "`ollama serve` を実行してください",
-        }
+def ai_status():
+    """Hugging Face API の接続確認（モック）"""
+    return {
+        "ollama_running": True, # フロント互換性のため
+        "gemma3_ready": True,   # フロント互換性のため
+        "message": "Hugging Face Inference API is Ready"
+    }
