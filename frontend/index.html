@@ -318,12 +318,13 @@ const {
 } = RechartsLib || {};
 
 /* ════════════════════════════════════════════════════════
-   CONFIG — バックエンドURL（相対パスを使用）
+   CONFIG — バックエンドURL
    ════════════════════════════════════════════════════════ */
-const API_BASE = localStorage.getItem("LUNARON_API_BASE") || 
-  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
-    ? "http://localhost:8000" 
-    : (window.location.origin.includes("hf.space") ? window.location.origin : ""));
+// 本番: Hugging Face Space を常に使用
+// ローカル開発時は http://localhost:8000 を使用
+const HF_BACKEND = "https://gyong7288-ui-lunaron-investment.hf.space";
+const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const API_BASE = localStorage.getItem("LUNARON_API_BASE") || (IS_LOCAL ? "http://localhost:8000" : HF_BACKEND);
 
 const setApiBase = (url) => { 
   let formattedUrl = url.trim().replace(/\/$/, ""); 
