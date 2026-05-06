@@ -706,6 +706,7 @@ function App() {
                 {ollamaStatus.ollama_running ? (ollamaStatus.gemma3_ready ? "● AI Ready" : "▲ AI Loading") : "○ AI Offline"}
               </div>
             </div>
+          </div>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <button onClick={() => {
               const url = prompt("APIベースURLを入力してください:", API_BASE);
