@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LUNARON — Investment Dashboard v3.5</title>
+<title>LUNARON  EInvestment Dashboard</title>
 <script src="/lib/react.min.js"></script>
 <script src="/lib/react-dom.min.js"></script>
 <script src="/lib/prop-types.min.js"></script>
@@ -11,8 +11,19 @@
 <script src="/lib/babel.min.js"></script>
 
 <script>
+  // Babel を介さなぁE��の JS でチェチE��
   window.addEventListener('DOMContentLoaded', () => {
-    console.log('LUNARON v3.5 Loaded');
+    console.log('Library Check:', {
+      React: typeof React,
+      ReactDOM: typeof ReactDOM,
+      PropTypes: typeof PropTypes,
+      Recharts: typeof Recharts
+    });
+    if (typeof Recharts === 'undefined') {
+      const msg = "Critical Error: Recharts is not defined. Attempting fallback name...";
+      console.error(msg);
+      // 丁E��一別の名前で登録されてぁE��場吁E      window.Recharts = window.Recharts || window.recharts || window.RECHARTS;
+    }
   });
 </script>
 <style>
@@ -91,64 +102,18 @@ input, select { font-family: inherit; }
   backdrop-filter: blur(8px);
   transition: transform 0.2s, box-shadow 0.2s;
 }
-.metric-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.06); }
-.metric-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #64748B; margin-bottom: 6px; display: flex; align-items: center; }
+.metric-card:hover {
+  transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+.metric-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: #64748B; margin-bottom: 6px;
+  display: flex; align-items: center;
+}
 .metric-value { font-size: 20px; font-weight: 600; letter-spacing: -.5px; color: #0F172A; }
 .metric-sub { font-size: 11px; margin-top: 4px; color: #64748B; }
 
-/* ── Buttons ── */
-.primary-btn {
-  background: #0B1F3A; color: #fff; border: none;
-  padding: 10px 20px; border-radius: 8px;
-  font-size: 13px; font-weight: 500; cursor: pointer;
-  width: 100%; transition: opacity .18s;
-}
-.primary-btn:hover { opacity: .85; }
-.primary-btn:disabled { opacity: .45; cursor: not-allowed; }
-
-/* ── AI result box ── */
-.ai-box {
-  background: #F8FAFC; border: 1px solid #E2E8F0;
-  border-radius: 10px; padding: 14px 16px;
-  font-size: 13px; line-height: 1.8; color: #334155;
-  white-space: pre-wrap; min-height: 110px;
-}
-
-/* ── Form inputs ── */
-.inp {
-  border: 1px solid #E2E8F0; border-radius: 8px;
-  padding: 8px 12px; font-size: 13px; background: #fff;
-  width: 100%; outline: none; color: #0B1F3A;
-  transition: border-color .15s;
-}
-.inp:focus { border-color: #94A3B8; }
-
-/* ── Footer ── */
-.footer {
-  margin-top: 20px; padding: 12px 0;
-  border-top: 1px solid #E4E9F0;
-  display: flex; justify-content: space-between;
-  font-size: 10px; color: #CBD5E1;
-}
-
-/* ── Signal badge ── */
-.signal-badge {
-  display: inline-flex; align-items: center;
-  padding: 4px 13px; border-radius: 20px;
-  font-size: 12px; font-weight: 700; letter-spacing: .4px;
-}
-.s-buy  { background: #DCFCE7; color: #15803D; }
-.s-sell { background: #FEE2E2; color: #DC2626; }
-.s-hold { background: #FEF9C3; color: #B45309; }
-
-/* ── Portfolio table ── */
-.pf-table { width: 100%; border-collapse: collapse; }
-.pf-table th { font-size: 10px; font-weight: 600; color: #94A3B8; padding: 10px; text-align: left; border-bottom: 1px solid #F1F5F9; }
-.pf-table td { padding: 10px; border-bottom: 1px solid #F8FAFC; }
-
-.pos { color: #16A34A; }
-.neg { color: #DC2626; }
-
+/* ── Tooltips ── */
 .help-tip {
   display: inline-flex; align-items: center; justify-content: center;
   width: 14px; height: 14px; border-radius: 50%; background: #E2E8F0;
@@ -160,9 +125,14 @@ input, select { font-family: inherit; }
   position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
   background: #0B1F3A; color: #fff; padding: 8px 12px; border-radius: 6px;
   font-size: 11px; white-space: pre-wrap; width: max-content; max-width: 240px;
-  z-index: 1000; margin-bottom: 6px; line-height: 1.4;
+  z-index: 1000; margin-bottom: 6px; line-height: 1.4; font-weight: normal;
+  text-transform: none; letter-spacing: normal;
 }
+.pos { color: #16A34A; }
+.neg { color: #DC2626; }
+.muted { color: #94A3B8; }
 
+/* ── Ticker buttons ── */
 .ticker-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
 .ticker-btn {
   border: 1px solid #E2E8F0; background: #fff;
@@ -170,147 +140,1469 @@ input, select { font-family: inherit; }
   font-size: 12px; font-weight: 500; color: #64748B;
   transition: all .18s;
 }
+.ticker-btn:hover:not(.active) { background: #F1F5F9; border-color: #CBD5E1; }
 .ticker-btn.active { background: #0B1F3A; color: #fff; border-color: #0B1F3A; }
 
+/* ── Signal badge ── */
+.signal-badge {
+  display: inline-flex; align-items: center;
+  padding: 4px 13px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; letter-spacing: .4px;
+}
+.s-buy  { background: #DCFCE7; color: #15803D; }
+.s-sell { background: #FEE2E2; color: #DC2626; }
+.s-hold { background: #FEF9C3; color: #B45309; }
+.s-reduce { background: #FFEDD5; color: #C2410C; }
+
+/* ── AI result box ── */
+.ai-box {
+  background: #F8FAFC; border: 1px solid #E2E8F0;
+  border-radius: 10px; padding: 14px 16px;
+  font-size: 13px; line-height: 1.8; color: #334155;
+  white-space: pre-wrap; min-height: 110px;
+}
+.ai-placeholder { color: #CBD5E1; font-style: italic; font-size: 12px; }
+.thinking { display: flex; align-items: center; gap: 5px; padding: 8px 0; }
+.thinking-dot {
+  width: 7px; height: 7px; background: #94A3B8; border-radius: 50%;
+  animation: blink 1.4s infinite ease-in-out;
+}
+.thinking-dot:nth-child(2) { animation-delay: .2s; }
+.thinking-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%,80%,100%{opacity:.3;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
+.thinking-text { font-size: 12px; color: #94A3B8; margin-left: 4px; }
+
+/* ── Buttons ── */
+.primary-btn {
+  background: #0B1F3A; color: #fff; border: none;
+  padding: 10px 20px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  width: 100%; transition: opacity .18s;
+}
+.primary-btn:hover { opacity: .85; }
+.primary-btn:disabled { opacity: .45; cursor: not-allowed; }
+.sub-tab-btn {
+  padding: 4px 11px; border-radius: 14px; border: 1px solid #E2E8F0;
+  background: #fff; color: #64748B; font-size: 11px; font-weight: 500;
+  transition: all .15s;
+}
+.sub-tab-btn.active { background: #0B1F3A; color: #fff; border-color: #0B1F3A; }
+
+/* ── Form inputs ── */
+.inp {
+  border: 1px solid #E2E8F0; border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; background: #fff;
+  width: 100%; outline: none; color: #0B1F3A;
+  transition: border-color .15s;
+}
+.inp:focus { border-color: #94A3B8; }
+.sel {
+  border: 1px solid #E2E8F0; border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; background: #fff;
+  outline: none; color: #0B1F3A; width: 100%;
+}
+.form-label { font-size: 10px; color: #94A3B8; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; display: block; }
+
+/* ── Portfolio table ── */
+.pf-table { width: 100%; border-collapse: collapse; }
+.pf-table th {
+  font-size: 10px; font-weight: 600; letter-spacing: .8px;
+  text-transform: uppercase; color: #94A3B8;
+  padding: 0 8px 10px; text-align: left; border-bottom: 1px solid #F1F5F9;
+}
+.pf-table th:not(:first-child) { text-align: right; }
+.pf-table td { padding: 10px 8px; border-bottom: 1px solid #F8FAFC; vertical-align: middle; }
+.pf-table td:not(:first-child) { text-align: right; }
+.pf-table tr:last-child td { border-bottom: none; }
+.ticker-name { font-weight: 600; font-size: 13px; }
+.ticker-sub { font-size: 10px; color: #94A3B8; }
+.remove-btn { background: none; border: none; color: #CBD5E1;
+  font-size: 14px; cursor: pointer; padding: 4px 8px;
+  border-radius: 4px; transition: color .15s; }
+.remove-btn:hover { color: #DC2626; }
+.pnl-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600;
+}
+
+/* ── Chart panels ── */
+.chart-panel { 
+  background: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.8); 
+  border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; 
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.03);
+  backdrop-filter: blur(12px);
+}
+.chart-title { font-size: 14px; font-weight: 600; color: #0F172A; margin-bottom: 6px; }
+.chart-sub { font-size: 11px; color: #64748B; margin-bottom: 14px; }
+.legend-row { display: flex; align-items: center; gap: 16px; font-size: 11px; color: #64748B; margin-top: 12px; flex-wrap: wrap; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+
+/* ── API Key panel ── */
+.api-panel {
+  background: #EFF6FF; border: 1px solid #BFDBFE;
+  border-radius: 10px; padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+/* ── GBM formula card ── */
+.formula-box {
+  background: #F8FAFC; border: 1px solid #E2E8F0;
+  border-radius: 8px; padding: 12px 16px;
+  font-size: 12px; line-height: 1.7; color: #475569;
+}
+
+/* ── Divider ── */
 .divider { border: none; border-top: 1px solid #F1F5F9; margin: 14px 0; }
+
+/* ── Footer ── */
+.footer {
+  margin-top: 20px; padding: 12px 0;
+  border-top: 1px solid #E4E9F0;
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: #CBD5E1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .content { padding: 12px 8px; }
+  .metric-grid { grid-template-columns: 1fr 1fr !important; }
+  .two-col { grid-template-columns: 1fr !important; }
+  .pf-table { font-size: 11px; }
+  .pf-table th, .pf-table td { padding: 8px 4px; }
+  .ai-box { font-size: 12px; }
+}
+
+/* ── Error banner ── */
+.error-banner {
+  background: #FEF2F2; border: 1px solid #FECACA;
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 12px; color: #DC2626; margin-bottom: 10px;
+}
 </style>
 </head>
 <body>
 <div id="root"></div>
 
-<script type="text/babel">
-const { useState, useEffect, useCallback } = React;
+<script>
+// Safe access to Recharts global
 const RechartsLib = window.Recharts || window.recharts;
+
+// Basic error logging to UI with more details
+window.onerror = function(msg, url, line, col, error) {
+  const root = document.getElementById('root');
+  if (root) {
+    root.innerHTML = `<div style="padding:20px;color:#ef4444;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin:20px;font-family:sans-serif;">
+      <h3 style="margin-top:0">Dashboard Error</h3>
+      <p style="font-size:14px"><strong>Message:</strong> ${msg}</p>
+      <p style="font-size:12px"><strong>Location:</strong> ${url} (${line}:${col})</p>
+      ${error ? `<pre style="font-size:11px;background:#fee2e2;padding:8px;overflow:auto">${error.stack}</pre>` : ''}
+      <div style="margin-top:10px;font-size:12px;color:#64748b;">
+        Debug: React=${typeof React}, ReactDOM=${typeof ReactDOM}, PropTypes=${typeof window.PropTypes}, Recharts=${typeof RechartsLib}
+      </div>
+      <button onclick="location.reload()" style="margin-top:15px;padding:8px 16px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;">再読み込み</button>
+    </div>`;
+  }
+  return false;
+};
+
+if (!RechartsLib || typeof RechartsLib.LineChart === 'undefined') {
+  console.warn("Recharts library incomplete or failed to load. Using fallback components.");
+}
+</script>
+
+<script type="text/babel">
+
+const { useState, useEffect, useCallback } = React;
 const {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ReferenceLine, CartesianGrid, ComposedChart, Bar, BarChart,
   AreaChart, Area, PieChart, Pie, Cell
 } = RechartsLib || {};
 
+/* ════════════════════════════════════════════════════════
+   CONFIG  EバックエンドURL
+   ════════════════════════════════════════════════════════ */
+// 本番: Hugging Face Space を常に使用
+// ローカル開発時�E http://localhost:8000 を使用
 const HF_BACKEND = "https://gyongery-lunaron-investment.hf.space";
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-const API_BASE = (IS_LOCAL ? "http://localhost:8000" : HF_BACKEND);
+const API_BASE = IS_LOCAL ? "http://localhost:8000" : HF_BACKEND;
 
+const setApiBase = (url) => { 
+  let formattedUrl = url.trim().replace(/\/$/, ""); 
+  if (formattedUrl && !formattedUrl.startsWith("http")) formattedUrl = "https://" + formattedUrl;
+  localStorage.setItem("LUNARON_API_BASE", formattedUrl); 
+  location.reload(); 
+};
+
+/* ── Ticker 定義�E�バチE��エンドが落ちてぁE��場合�Eフォールバック用�E�E── */
 const FALLBACK_TICKERS = [
-  { id: "GLD",  name: "金 (ゴールド)", col: "#F59E0B", base: 210, seed: 101 },
-  { id: "QQQ",  name: "テクノロジー (QQQ)", col: "#3B82F6", base: 440, seed: 102 },
-  { id: "SQQQ", name: "逆回転 (ベア)", col: "#EF4444", base: 12,  seed: 103 },
-  { id: "TQQQ", name: "米国10倍 (ブル)", col: "#10B981", base: 60,  seed: 104 },
-  { id: "VOO",  name: "スタンダード (S&P500)", col: "#6366F1", base: 470, seed: 105 },
+  { id: "GLD",  name: "釁E(ゴールチE", col: "#F59E0B", base: 210, seed: 101 },
+  { id: "QQQ",  name: "チE��ノロジー (QQQ)", col: "#3B82F6", base: 440, seed: 102 },
+  { id: "SQQQ", name: "送E��転 (ベア)", col: "#EF4444", base: 12,  seed: 103 },
+  { id: "TQQQ", name: "米国10倁E(ブル)", col: "#10B981", base: 60,  seed: 104 },
+  { id: "VOO",  name: "スタンダーチE(S&P500)", col: "#6366F1", base: 470, seed: 105 },
 ];
+const TICKER_MAP = Object.fromEntries(FALLBACK_TICKERS.map(t => [t.id, t]));
+const PIE_COLORS = ["#1D4ED8","#7C3AED","#F59E0B","#10B981","#EF4444","#6366F1","#B45309","#8B5CF6"];
 
+/* ── フォールバック: ブラウザ冁E��インジケーター計箁E── */
+function seededRand(seed) {
+  let s = seed;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000; };
+}
+function calcEMAjs(arr, n) {
+  const k = 2 / (n + 1); const out = [arr[0]];
+  for (let i = 1; i < arr.length; i++) out.push(arr[i] * k + out[i-1] * (1-k));
+  return out;
+}
+function calcRSIjs(arr, n=14) {
+  const chg = arr.slice(1).map((v,i)=>v-arr[i]);
+  const out = new Array(n).fill(null);
+  let ag = chg.slice(0,n).filter(c=>c>0).reduce((a,b)=>a+b,0)/n;
+  let al = chg.slice(0,n).filter(c=>c<0).reduce((a,b)=>a-b,0)/n;
+  for (let i=n; i<chg.length; i++) {
+    const g=Math.max(chg[i],0), l=Math.max(-chg[i],0);
+    ag=(ag*(n-1)+g)/n; al=(al*(n-1)+l)/n;
+    out.push(al===0?100:100-100/(1+ag/al));
+  }
+  return out;
+}
+function calcMACDjs(arr) {
+  const e12=calcEMAjs(arr,12), e26=calcEMAjs(arr,26);
+  const line=arr.map((_,i)=>e12[i]-e26[i]);
+  const sig=calcEMAjs(line,9);
+  return { line, sig, hist:line.map((m,i)=>m-sig[i]) };
+}
+function calcBBjs(arr, n=20) {
+  const up=[],mid=[],lo=[];
+  for (let i=0; i<arr.length; i++) {
+    if (i<n-1){up.push(null);mid.push(null);lo.push(null);continue;}
+    const sl=arr.slice(i-n+1,i+1);
+    const m=sl.reduce((a,b)=>a+b,0)/n;
+    const sd=Math.sqrt(sl.reduce((a,b)=>a+(b-m)**2,0)/n);
+    up.push(m+2*sd); mid.push(m); lo.push(m-2*sd);
+  }
+  return { up, mid, lo };
+}
+function calcSharpeJs(prices, rf=0.045) {
+  const ret = prices.slice(1).map((v,i)=>(v-prices[i])/prices[i]);
+  const ar = ret.reduce((a,b)=>a+b,0)/ret.length*252;
+  const av = Math.sqrt(ret.reduce((a,b)=>a+(b-ar/252)**2,0)/ret.length)*Math.sqrt(252);
+  return av===0 ? 0 : (ar-rf)/av;
+}
+function gbmJs(prices, simCount=300, days=7) {
+  const lr = prices.slice(1).map((v,i)=>Math.log(v/prices[i]));
+  const mu = lr.reduce((a,b)=>a+b,0)/lr.length;
+  const variance = lr.reduce((a,b)=>a+(b-mu)**2,0)/lr.length;
+  const sigma = Math.sqrt(variance);
+  const S0 = prices[prices.length-1]; const dt = 1/252;
+  const r = seededRand(42);
+  const paths = [];
+  for (let s=0; s<simCount; s++) {
+    let p=S0; const path=[p];
+    for (let d=0; d<days; d++) {
+      const z=(r()+r()+r()+r()+r()+r()-3)*Math.sqrt(2);
+      p = p*Math.exp((mu-0.5*variance)*dt+sigma*Math.sqrt(dt)*z);
+      path.push(p);
+    }
+    paths.push(path);
+  }
+  const result=[];
+  for (let d=0; d<=days; d++) {
+    const vals=paths.map(p=>p[d]).sort((a,b)=>a-b);
+    const n=vals.length;
+    result.push({
+      day: d===0?"現在":`+${d}日`,
+      p10:vals[Math.floor(n*.10)], p25:vals[Math.floor(n*.25)],
+      p50:vals[Math.floor(n*.50)], p75:vals[Math.floor(n*.75)],
+      p90:vals[Math.floor(n*.90)],
+    });
+  }
+  return { forecast:result, annual_volatility:sigma*Math.sqrt(252), annual_drift:mu*252 };
+}
+function genFallbackData(base, seed, days=120) {
+  const r=seededRand(seed || 42); const d=[]; let p=base || 200;
+  for (let i=0; i<days; i++) {
+    const dt=new Date(); dt.setDate(dt.getDate()-(days-i));
+    p=Math.max(p+(r()-0.478)*base*0.022, base*0.6);
+    d.push({ date:`${dt.getMonth()+1}/${dt.getDate()}`, close:p });
+  }
+  return d;
+}
+function buildChartData(ticker) {
+  const raw = genFallbackData(ticker.base, ticker.seed);
+  const closes = raw.map(d=>d.close);
+  const rsiArr = calcRSIjs(closes);
+  const {line:ml, sig:ms, hist:mh} = calcMACDjs(closes);
+  const {up,mid,lo} = calcBBjs(closes);
+  const sharpe = calcSharpeJs(closes);
+  const gbm = gbmJs(closes);
+  const chartData = raw.map((d,i)=>({
+    date:d.date, close:+d.close.toFixed(2),
+    rsi:rsiArr[i]!=null?+rsiArr[i].toFixed(1):null,
+    macd:+ml[i].toFixed(4), macdSig:+ms[i].toFixed(4), hist:+mh[i].toFixed(4),
+    upper:up[i]!=null?+up[i].toFixed(2):null,
+    middle:mid[i]!=null?+mid[i].toFixed(2):null,
+    lower:lo[i]!=null?+lo[i].toFixed(2):null,
+  }));
+  const latest=chartData[chartData.length-1];
+  const prev=chartData[chartData.length-2];
+  let chg = 0;
+  if (latest && prev && prev.close !== 0) {
+    chg = ((latest.close - prev.close) / prev.close * 100).toFixed(2);
+  }
+  let score=0;
+  const rv=latest.rsi;
+  if(rv<30)score+=2; else if(rv<45)score+=1; else if(rv>70)score-=2; else if(rv>60)score-=1;
+  if(latest.hist>0)score+=1; else score-=1;
+  if(latest.close<(latest.lower||0)*1.02)score+=1;
+  if(latest.close>(latest.upper||0)*0.98)score-=1;
+  const signal = score>=2?"BUY":score<=-2?"SELL":"HOLD";
+  return { chartData, latest, change_pct:+chg, sharpe:+sharpe.toFixed(3), signal, gbm, color:ticker.col };
+}
+
+/* ── Format helpers ── */
+function fmtPrice(v, tickerId) {
+  if (v == null || isNaN(v)) return "---";
+  if (tickerId==="BTC"||tickerId==="ETH") return "$"+v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+  if (v>10000) return "$"+v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+  return "$"+v.toFixed(2);
+}
+function fmtYen(v) { return "¥"+Math.round(v).toLocaleString(); }
+
+/* ════════════════════════════════════════════════════════
+   メインコンポ�EネンチE   ════════════════════════════════════════════════════════ */
 function App() {
   const [tab, setTab] = useState("chart");
+  const [tickers, setTickers] = useState(FALLBACK_TICKERS);
   const [tick, setTick] = useState(FALLBACK_TICKERS[0]);
   const [backendOk, setBackendOk] = useState(false);
+  const [chartSub, setChartSub] = useState("RSI");
+  const [indicatorData, setIndicatorData] = useState(null);
+  const [indicatorLoading, setIndicatorLoading] = useState(false);
+  const [analysis, setAnalysis] = useState("");
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [signal, setSignal] = useState(null);
+  const [pfAnalysis, setPfAnalysis] = useState("");
+  const [pfLoading, setPfLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [holdings, setHoldings] = useState([]);
+  const [newTicker, setNewTicker] = useState("GLD");
+  const [newQty, setNewQty] = useState("");
+  const [newBuy, setNewBuy] = useState("");
+  const [newCat, setNewCat] = useState("PayPay");
+  const [aiQuery, setAiQuery] = useState("");
+  const [filterCat, setFilterCat] = useState("すべて");
+  const [usdjpy, setUsdjpy] = useState(150);
+  const [isSimpleMode, setIsSimpleMode] = useState(true);
+  const [yenInvested, setYenInvested] = useState("");
+  const [yenCurrent, setYenCurrent] = useState("");
+  const [ollamaStatus, setOllamaStatus] = useState({ ollama_running: false, gemma3_ready: false, message: "確認中..." });
+  
+  /* チャチE��機�Eの状慁E*/
   const [chatHistory, setChatHistory] = useState([
-    { role: "assistant", content: "こんにちは！投資アドバイザーのLunaron AIです。投資の悩みやNISAの活用方法など、何でも聞いてください。" }
+    { role: "assistant", content: "こんにちは�E�投賁E��ドバイザーのLunaron AIです。投賁E�E基礎知識やNISAの活用方法、リスク管琁E��ど、何でも気軽に聞いてくださいね、E }
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
+  /* バックエンド疎通確誁E*/
   useEffect(() => {
-    fetch(`${API_BASE}/api/health`)
-      .then(r => { if(r.ok) setBackendOk(true); })
-      .catch(() => setBackendOk(false));
+    const checkStatus = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/health`);
+        if (r.ok) {
+          const data = await r.json();
+          setBackendOk(true);
+          if (data.usdjpy) setUsdjpy(data.usdjpy);
+          fetchTickers();
+          // AIの状態も確誁E          const ar = await fetch(`${API_BASE}/api/ollama/status`);
+          const ad = await ar.json();
+          setOllamaStatus(ad);
+        } else {
+          setBackendOk(false);
+        }
+      } catch {
+        setBackendOk(false);
+      }
+    };
+    checkStatus();
+    const timer = setInterval(checkStatus, 30000); // 30秒ごとに更新
+    return () => clearInterval(timer);
   }, []);
 
+  const fetchTickers = async () => {
+    try {
+      const r = await fetch(`${API_BASE}/api/tickers`);
+      const data = await r.json();
+      if (data.tickers) setTickers(data.tickers);
+    } catch {}
+  };
+
+  /* インジケーターチE�Eタ取征E*/
+  const fetchIndicators = useCallback(async (t) => {
+    setIndicatorLoading(true); setApiError("");
+    if (backendOk) {
+      try {
+        const r = await fetch(`${API_BASE}/api/indicators/${t.id}`);
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        setIndicatorData(data);
+        setIndicatorLoading(false);
+        return;
+      } catch (e) { setApiError("バックエンドエラー。フォールバックチE�Eタを使用中、E); }
+    }
+    // フォールバック
+    setIndicatorData(buildChartData(t));
+    setIndicatorLoading(false);
+  }, [backendOk]);
+
+  useEffect(() => {
+    setIndicatorData(null); // 刁E��替え時に一旦クリア
+    fetchIndicators(tick);
+    setAnalysis(""); setSignal(null);
+  }, [tick, fetchIndicators]);
+
+  /* AI刁E��実衁E*/
+  const runAnalysis = async () => {
+    setAnalysisLoading(true); setAnalysis(""); setApiError("");
+    if (backendOk) {
+      try {
+        const r = await fetch(`${API_BASE}/api/analyze`, {
+          method: "POST", headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({ ticker_id: tick.id, query: aiQuery })
+        });
+        const data = await r.json();
+        if (data.analysis) {
+          setSignal(data.signal); 
+          setAnalysis(data.analysis);
+          setAnalysisLoading(false); 
+          setAiQuery(""); 
+          return;
+        }
+      } catch (e) { console.error(e); }
+    }
+    const msg = ollamaStatus.ollama_running 
+      ? (ollamaStatus.gemma3_ready ? "AI刁E��に失敗しました。時間をおいて再度お試しください、E : "AIモチE��(Gemma3)を準備中です。`ollama pull gemma3` を実行してください、E)
+      : "AI(Ollama)が起動してぁE��せん。ターミナルで `ollama serve` を実行してください、E;
+    setAnalysis(msg);
+    setAnalysisLoading(false);
+  };
+
+  /* AIチャチE��実衁E*/
   const runChat = async () => {
     if (!chatInput.trim() || chatLoading) return;
     const userMsg = chatInput.trim();
     setChatInput("");
     setChatLoading(true);
-    setChatHistory(prev => [...prev, { role: "user", content: userMsg }]);
+    
+    const newHistory = [...chatHistory, { role: "user", content: userMsg }];
+    setChatHistory(newHistory);
 
-    try {
-      const r = await fetch(`${API_BASE}/api/chat`, {
-        method: "POST", headers: { "Content-Type":"application/json" },
-        body: JSON.stringify({ message: userMsg, history: chatHistory })
-      });
-      const data = await r.json();
-      setChatHistory(prev => [...prev, { role: "assistant", content: data.response }]);
-    } catch (e) {
-      setChatHistory(prev => [...prev, { role: "assistant", content: "AIサーバーに接続できませんでした。しばらく経ってから再度お試しください。" }]);
+    if (backendOk) {
+      try {
+        const r = await fetch(`${API_BASE}/api/chat`, {
+          method: "POST", headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({ message: userMsg, history: chatHistory })
+        });
+        const data = await r.json();
+        if (data.response) {
+          setChatHistory(prev => [...prev, { role: "assistant", content: data.response }]);
+          setChatLoading(false);
+          return;
+        }
+      } catch (e) { console.error(e); }
     }
-    setChatLoading(false);
+    
+    // バックエンド未接続時の簡易的な自動応答（デモ用�E�E    setTimeout(() => {
+      setChatHistory(prev => [...prev, { role: "assistant", content: "現在AIサーバ�Eとの接続が不安定なようです。投賁E�E基本原則�E�長期�E刁E��・積立）を守ることで、多くのリスクを軽減できますよ。�E体的な銘柄刁E��は「チャート�E析」タブから行えます、E }]);
+      setChatLoading(false);
+    }, 1000);
   };
 
+  /* ポ�Eトフォリオ診断 */
+  const runPfAnalysis = async () => {
+    if (!holdings.length) return;
+    setPfLoading(true); setPfAnalysis(""); setApiError("");
+    const payload = holdings.map(h=>({
+      ticker:h.ticker, name:h.name,
+      qty:parseFloat(h.qty)||0,
+      buy_price:parseFloat(h.buyPrice)||0,
+    }));
+    if (backendOk) {
+      try {
+        const r = await fetch(`${API_BASE}/api/portfolio/analyze`, {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({ holdings: payload })
+        });
+        const data = await r.json();
+        if (data.analysis) {
+          setPfAnalysis(data.analysis); 
+          setPfLoading(false); 
+          return;
+        }
+      } catch { }
+    }
+    const msg = ollamaStatus.ollama_running 
+      ? "ポ�Eトフォリオ刁E��に失敗しました、EIモチE��が準備できてぁE��か確認してください、E
+      : "AI(Ollama)が起動してぁE��せん。`ollama serve` を実行してください、E;
+    setPfAnalysis(msg);
+    setPfLoading(false);
+  };
+
+  const addHolding = () => {
+    const t = TICKER_MAP[newTicker];
+    if (!t) return;
+    
+    let qty, buyPrice;
+    
+    if (isSimpleMode) {
+      // かんたん入力モーチE(冁E��佁E
+      if (!yenInvested) return;
+      const invYen = parseFloat(yenInvested);
+      const curYen = parseFloat(yenCurrent) || invYen;
+      
+      // バックエンドから取得した現在のドル価格 (チE��の場合�EbuildChartDataから取征E
+      const currentPriceUSD = (indicatorData && indicatorData.ticker_id === newTicker) 
+        ? indicatorData.latest.close 
+        : buildChartData(t).latest.close;
+        
+      // 数釁E= 現在の評価顁E冁E / (現在の株価(ドル) * ドル冁E
+      qty = curYen / (currentPriceUSD * usdjpy);
+      // 取得単価 = 投賁E��E冁E / (数釁E* ドル冁E
+      buyPrice = invYen / (qty * usdjpy);
+    } else {
+      // 通常入力モーチE      if (!newQty || !newBuy) return;
+      qty = parseFloat(newQty);
+      buyPrice = parseFloat(newBuy);
+    }
+
+    setHoldings(h => [...h, { 
+      id:Date.now(), 
+      ticker:newTicker, 
+      name:t.name, 
+      qty:qty, 
+      buyPrice:buyPrice,
+      cat:newCat 
+    }]);
+    setNewQty(""); setNewBuy(""); setYenInvested(""); setYenCurrent("");
+  };
+  const removeHolding = id => setHoldings(h => h.filter(x => x.id !== id));
+
+  /* ポ�Eトフォリオ計箁E*/
+  const pfData = holdings.map(h => {
+    const t = TICKER_MAP[h.ticker];
+    if (!t) return { ...h, currentPrice:+h.buyPrice, pnl:0, pnlPct:0, currentVal:0, totalCost:0, col:"#94A3B8" };
+    const raw = genFallbackData(t.base, t.seed);
+    const cur = raw[raw.length-1].close;
+    const qty = parseFloat(h.qty)||0, buy = parseFloat(h.buyPrice)||cur;
+    const totalCost = qty*buy, currentVal = qty*cur;
+    const pnl = currentVal-totalCost, pnlPct = totalCost>0?(pnl/totalCost)*100:0;
+    return { ...h, currentPrice:cur, pnl, pnlPct, currentVal, totalCost, col:t.col };
+  });
+  const totalCost = pfData.reduce((a,b)=>a+b.totalCost,0);
+  const totalVal  = pfData.reduce((a,b)=>a+b.currentVal,0);
+  const totalPnl  = totalVal - totalCost;
+  const totalPnlPct = totalCost>0?(totalPnl/totalCost)*100:0;
+
+  /* Chart helpers */
+  const d = indicatorData;
+  const recent = (d && d.chartData) ? d.chartData.slice(-30) : [];
+  const latest = d ? d.latest : null;
+  const gbm = d ? d.gbm : null;
+  const priceMin = recent.length ? Math.min(...recent.map(x=>(x.lower||x.close)))*0.997 : 0;
+  const priceMax = recent.length ? Math.max(...recent.map(x=>(x.upper||x.close)))*1.003 : 100;
+
+  const CustomTT = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div style={{background:"#fff",border:"1px solid #E2E8F0",borderRadius:8,padding:"8px 12px",fontSize:11}}>
+        <div style={{color:"#94A3B8",marginBottom:3}}>{label}</div>
+        {payload.map((p,i) => p.value != null && (
+          <div key={i} style={{color:p.color||"#0B1F3A",fontWeight:500}}>
+            {p.name}: {typeof p.value==="number" ? p.value.toFixed(2) : p.value}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const col = tick.col || "#1D4ED8";
+
+  /* ════════ RENDER ════════ */
   return (
     <div className="app-wrapper">
+
+      {/* ── Header ── */}
       <header className="header">
         <div className="header-brand">
           <div className="header-logo"><div className="header-logo-dot"/></div>
           <div>
             <div className="header-title">LUNARON</div>
-            <div className="header-sub">Investment Dashboard v3.5 (LATEST)</div>
+            <div className="header-sub">Investment Dashboard v3.5 <span style={{color:"#7C3AED", fontWeight:700}}>(AI Chat Enabled)</span></div>
           </div>
         </div>
-        <div className="live-badge">
-          <div className="live-dot"/><span className="live-text">{backendOk?"API ONLINE":"OFFLINE"}</span>
-        </div>
-      </header>
-
-      <nav className="tabs">
-        <button className={`tab-btn ${tab==="chart"?"active":""}`} onClick={()=>setTab("chart")}>◈ チャート分析</button>
-        <button className={`tab-btn chat-highlight ${tab==="chat"?"active":""}`} onClick={()=>setTab("chat")}>✨ AI投資相談</button>
-        <button className={`tab-btn ${tab==="portfolio"?"active":""}`} onClick={()=>setTab("portfolio")}>◉ ポートフォリオ</button>
-      </nav>
-
-      <div className="content">
-        {tab === "chart" && (
-          <div className="card">
-            <div className="ticker-row">
-              {FALLBACK_TICKERS.map(t => (
-                <button key={t.id} className={`ticker-btn ${tick.id===t.id?"active":""}`} onClick={()=>setTick(t)}>{t.id}</button>
-              ))}
-            </div>
-            <h2>{tick.name} の分析</h2>
-            <div className="ai-box" style={{marginTop:20}}>
-              チャートデータに基づいた分析を生成するにはAIサーバーが必要です。
-            </div>
-            
-            <div style={{marginTop:20, padding:15, background:"#F1F5F9", borderRadius:10}}>
-              <div style={{fontSize:12, fontWeight:700, marginBottom:8}}>✨ AIアドバイザーに質問する</div>
-              <div style={{display:"flex", gap:10}}>
-                <input className="inp" value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter" && runChat()} placeholder="この銘柄の今後の展望は？" />
-                <button className="primary-btn" style={{width:"auto"}} onClick={runChat}>質問</button>
+        <div style={{display:"flex",alignItems:"center",gap:20}}>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:10,color:"#94A3B8"}}>System Status</div>
+            <div style={{display:"flex",gap:12,marginTop:2}}>
+              <div style={{fontSize:11,color:backendOk?"#16A34A":"#F59E0B"}}>
+                {backendOk ? "◁EAPI Online" : "◁EOffline"}
+              </div>
+              <div style={{fontSize:11,color:ollamaStatus.gemma3_ready?"#16A34A":"#F59E0B"}}>
+                {ollamaStatus.ollama_running ? (ollamaStatus.gemma3_ready ? "◁EAI Ready" : "▲ AI Loading") : "◁EAI Offline"}
               </div>
             </div>
           </div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <button onClick={() => {
+              const suggested = "https://gyong7288-ui-lunaron-investment.hf.space";
+              const url = prompt(`APIベ�EスURLを�E力してください:\n(推奨: ${suggested})`, API_BASE || suggested);
+              if (url) setApiBase(url);
+            }} style={{background:"none",border:"none",cursor:"pointer",color:backendOk?"#94A3B8":"#F59E0B",fontSize:14,animation:backendOk?"none":"pulse 2s infinite"}}>⚙︁E/button>
+            <div className="live-badge">
+              <div className="live-dot"/><span className="live-text">LIVE</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Tabs ── */}
+      <nav className="tabs">
+        {[
+          ["chart","◁Eチャート�E极E],
+          ["chat","✨ AI投賁E��諁E],
+          ["portfolio","◁Eポ�Eトフォリオ"],
+          ["forecast","◁EGBM予測"],
+          ["learn","📚 投賁E��礁E]
+        ].map(([k,l])=>(
+          <button key={k} className={`tab-btn ${tab===k?"active":""} ${k==="chat"?"chat-highlight":""}`} 
+            onClick={()=>{ console.log("Switching to", k); setTab(k); }}>{l}</button>
+        ))}
+      </nav>
+
+      <div className="content">
+        {apiError && <div className="error-banner">⚠ {apiError}</div>}
+        {!backendOk && window.location.protocol === "https:" && API_BASE.startsWith("http://") && (
+          <div className="error-banner" style={{background:"#FFFBEB",borderColor:"#F59E0B",color:"#B45309"}}>
+            <strong>⚠ セキュリチE��による接続ブロチE��</strong><br/>
+            HTTPS�E�Eloudflare�E�からローカル�E�ETTP�E�への通信がブラウザで禁止されてぁE��す、Ebr/>
+            右上�E⚙️設定から、Estrong>Hugging FaceのURL�E�Ettps://...�E�E/strong>を�E力するか、ローカル環墁E��Eocalhost:8000�E�で直接開いてください、E          </div>
         )}
 
-        {tab === "chat" && (
-          <div className="card" style={{height:"calc(100vh - 250px)", display:"flex", flexDirection:"column"}}>
-            <div style={{flex:1, overflowY:"auto", padding:10, display:"flex", flexDirection:"column", gap:10}}>
+        {/* ══════════════════════════════════════════
+            TAB: チャート�E极E            ══════════════════════════════════════════ */}
+        {tab==="chart" && <>
+          <div className="ticker-row">
+            {tickers.map(t => (
+              <button key={t.id} className={`ticker-btn ${tick.id===t.id?"active":""}`}
+                onClick={()=>setTick(t)}>
+                <strong>{t.id}</strong>&nbsp;
+                <span style={{opacity:.7,fontSize:10}}>{t.name}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Expert Insights ── */}
+          <div className="card" style={{background:"linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",borderLeft:"4px solid #0B1F3A",marginBottom:15}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+              <div>
+                <div className="metric-label" style={{color:"#0B1F3A",fontWeight:700}}>専門家による市場診断</div>
+                <div style={{fontSize:10,color:"#64748B",marginTop:2}}>歴史皁E��ータと市場忁E��に基づく客観皁E��価</div>
+              </div>
+              <div className={`pnl-tag ${indicatorData?.expert?.fg_val<30?"s-buy":indicatorData?.expert?.fg_val>70?"s-sell":"s-hold"}`}>
+                {indicatorData?.expert?.fg_label || "Neutral"}
+              </div>
+            </div>
+
+            <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+              <div className="metric-card" style={{background:"#fff",padding:10}}>
+                <div className="metric-label">
+                  忁E��持E�� (F&G)
+                  <span className="help-tip" data-tip="市場の忁E��状態を0(極度の恐态E、E00(極度の強欲)で表します、E#10;「恐怖」�E時ほど割安で買ぁE��ャンスです、E>?</span>
+                </div>
+                <div style={{fontSize:16,fontWeight:700,color:"#0B1F3A"}}>{indicatorData?.expert?.fg_val || 50}</div>
+                <div style={{fontSize:9,color:"#94A3B8"}}>0(恐态E ↁE100(強欲)</div>
+              </div>
+              <div className="metric-card" style={{background:"#fff",padding:10}}>
+                <div className="metric-label">
+                  シラーPER (CAPE)
+                  <span className="help-tip" data-tip="過去10年間�E利益から計算した株価の割安度です、E#10;こ�E数値が高いと「バブル気味�E�過熱�E�」、低いと「お買ぁE��（割安）」と判断できます、E>?</span>
+                </div>
+                <div style={{fontSize:16,fontWeight:700,color:"#0B1F3A"}}>
+                  {indicatorData?.expert?.cape || " E}
+                  <span style={{fontSize:10,marginLeft:4,fontWeight:500,color:indicatorData?.expert?.cape_status==="割宁E?"#16A34A":indicatorData?.expert?.cape_status==="過�E"?"#DC2626":"#64748B"}}>
+                    ({indicatorData?.expert?.cape_status || " E})
+                  </span>
+                </div>
+                <div style={{fontSize:9,color:"#94A3B8"}}>歴史皁E��リュエーション</div>
+              </div>
+              <div className="metric-card" style={{background:"#fff",padding:10}}>
+                <div className="metric-label">現在の立ち回り</div>
+                <div style={{fontSize:11,fontWeight:600,color:"#0B1F3A",lineHeight:1.2,marginTop:2,minHeight:30}}>
+                  {indicatorData?.expert?.tip || "航路を守りましょぁE��E}
+                </div>
+              </div>
+            </div>
+
+            {/* AI備老E��E*/}
+            <div style={{marginTop:12,paddingTop:10,borderTop:"1px dashed #E2E8F0"}}>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <div style={{fontSize:9,background:"#0B1F3A",color:"#fff",padding:"2px 6px",borderRadius:4,fontWeight:700}}>AI備老E/div>
+                <div style={{fontSize:11,color:"#475569",fontWeight:500}}>
+                  {indicatorData?.expert?.memo || "チE�Eタを�E析中..."}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Metric cards */}
+          <div className="metric-grid" style={{gridTemplateColumns:"repeat(5,1fr)"}}>
+            {[
+              ["価格", latest?fmtPrice(latest.close,tick.id):" E,
+               d&&<span className={d.change_pct>=0?"pos":"neg"}>{d.change_pct>=0?"▲":"▼"}{Math.abs(d.change_pct)}%</span>],
+              ["RSI(14)", latest?.rsi?.toFixed(1)??" E,
+               <span className="muted" style={{fontSize:10}}>{!latest?.rsi?"":latest.rsi>70?"過�E":latest.rsi<30?"割宁E:"中竁E}</span>],
+              ["MACD", latest?.hist?.toFixed(3)??" E,
+               <span style={{fontSize:10,color:latest?.hist>0?"#16A34A":"#DC2626"}}>{latest?.hist>0?"強気�E":"弱気�E"}</span>],
+              ["シャーチE, d?.sharpe?.toFixed(2)??" E,
+               <span className="muted" style={{fontSize:10}}>{!d?.sharpe?"":d.sharpe>1?"優秀":d.sharpe>0?"普送E:"要注愁E}</span>],
+              ["7日予測(中央値)", gbm?fmtPrice(gbm.forecast[gbm.forecast.length-1].p50,tick.id):" E,
+               <span className="muted" style={{fontSize:10}}>GBMモチE��</span>],
+            ].map(([l,v,s],i)=>(
+              <div key={i} className="metric-card">
+                <div className="metric-label">{l}</div>
+                <div className="metric-value" style={{fontSize:16,color:i===0?col:"#0B1F3A"}}>{v}</div>
+                <div className="metric-sub">{s}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Price chart */}
+          <div className="chart-panel">
+            <div className="chart-title">{tick.name}  E価格 + ボリンジャーバンド（直迁E0日�E�E/div>
+            {indicatorLoading ? <div style={{textAlign:"center",padding:"40px 0",color:"#94A3B8",fontSize:12}}>チE�Eタ取得中...</div> : (
+              <ResponsiveContainer width="100%" height={200}>
+                <ComposedChart data={recent} margin={{top:4,right:4,bottom:0,left:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false}/>
+                  <XAxis dataKey="date" tick={{fontSize:9,fill:"#94A3B8"}} tickLine={false} axisLine={false} interval={4}/>
+                  <YAxis domain={[priceMin,priceMax]} tick={{fontSize:9,fill:"#94A3B8"}} tickLine={false} axisLine={false}
+                    tickFormatter={v=>tick.id==="BTC"||tick.id==="ETH"?"$"+(v/1000).toFixed(0)+"k":"$"+v.toFixed(0)} width={52}/>
+                  <Tooltip content={<CustomTT/>}/>
+                  <Area dataKey="upper" stroke="none" fill="#EFF6FF" fillOpacity={1} dot={false} legendType="none"/>
+                  <Area dataKey="lower" stroke="none" fill="#fff" fillOpacity={1} dot={false} legendType="none"/>
+                  <Line type="monotone" dataKey="upper"  stroke="#BFDBFE" strokeWidth={1} dot={false} name="BB上限"/>
+                  <Line type="monotone" dataKey="middle" stroke="#CBD5E1" strokeWidth={1} dot={false} strokeDasharray="4 2" name="MA20"/>
+                  <Line type="monotone" dataKey="lower"  stroke="#BFDBFE" strokeWidth={1} dot={false} name="BB下限"/>
+                  <Line type="monotone" dataKey="sma50"  stroke="#F59E0B" strokeWidth={1.5} dot={false} strokeDasharray="3 3" name="SMA50"/>
+                  <Line type="monotone" dataKey="sma200" stroke="#EF4444" strokeWidth={1.5} dot={false} strokeDasharray="5 5" name="SMA200"/>
+                  <Line type="monotone" dataKey="close"  stroke={col} strokeWidth={2.5} dot={false} name="終値"/>
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+            <div className="legend-row">
+              <span><span className="legend-dot" style={{background:col}}/>終値</span>
+              <span style={{display:"flex", alignItems:"center"}}>
+                <span className="legend-dot" style={{background:"#BFDBFE"}}/>ボリンジャー (±2ρE
+              </span>
+              <span style={{display:"flex", alignItems:"center"}}>
+                <span className="legend-dot" style={{background:"#F59E0B"}}/>SMA50
+                <span className="help-tip" data-tip="過去50日間�E平坁E��格�E�中期トレンド）。この線より上なら上�E傾向、E>?</span>
+              </span>
+              <span style={{display:"flex", alignItems:"center"}}>
+                <span className="legend-dot" style={{background:"#EF4444"}}/>SMA200
+                <span className="help-tip" data-tip="過去200日間�E平坁E��格�E�長期トレンド）。大局皁E��強氁E弱気相場の判断に使ぁE��す、E>?</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Sub chart + AI panel */}
+          <div className="two-col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div>
+              <div style={{display:"flex",gap:6,marginBottom:8}}>
+                {["RSI","MACD"].map(c=>(
+                  <button key={c} className={`sub-tab-btn ${chartSub===c?"active":""}`} onClick={()=>setChartSub(c)}>{c}</button>
+                ))}
+              </div>
+
+              {chartSub==="RSI" && (
+                <div className="chart-panel" style={{padding:"12px 16px"}}>
+                  <div style={{fontSize:11,color:"#64748B",fontWeight:500,marginBottom:6}}>RSI (14)  E相対力指数</div>
+                  <ResponsiveContainer width="100%" height={130}>
+                    <LineChart data={recent.filter(d=>d.rsi!=null)} margin={{top:4,right:4,bottom:0,left:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false}/>
+                      <XAxis dataKey="date" tick={{fontSize:8,fill:"#94A3B8"}} tickLine={false} axisLine={false} interval={5}/>
+                      <YAxis domain={[0,100]} tick={{fontSize:8,fill:"#94A3B8"}} tickLine={false} axisLine={false} width={24}/>
+                      <Tooltip content={<CustomTT/>}/>
+                      <ReferenceLine y={70} stroke="#FCA5A5" strokeDasharray="3 2"/>
+                      <ReferenceLine y={30} stroke="#86EFAC" strokeDasharray="3 2"/>
+                      <Line type="monotone" dataKey="rsi" stroke="#7C3AED" strokeWidth={2} dot={false} name="RSI"/>
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#94A3B8",marginTop:6}}>
+                    <span style={{color:"#86EFAC"}}>▼ 30: 割安（買ぁE��討！E/span>
+                    <span style={{color:"#FCA5A5"}}>▲ 70: 過�E�E�売り検討！E/span>
+                  </div>
+                </div>
+              )}
+
+              {chartSub==="MACD" && (
+                <div className="chart-panel" style={{padding:"12px 16px"}}>
+                  <div style={{fontSize:11,color:"#64748B",fontWeight:500,marginBottom:6}}>MACD  Eトレンド転換指樁E/div>
+                  <ResponsiveContainer width="100%" height={130}>
+                    <ComposedChart data={recent} margin={{top:4,right:4,bottom:0,left:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false}/>
+                      <XAxis dataKey="date" tick={{fontSize:8,fill:"#94A3B8"}} tickLine={false} axisLine={false} interval={5}/>
+                      <YAxis tick={{fontSize:8,fill:"#94A3B8"}} tickLine={false} axisLine={false} width={32} tickFormatter={v=>v.toFixed(1)}/>
+                      <Tooltip content={<CustomTT/>}/>
+                      <ReferenceLine y={0} stroke="#E2E8F0"/>
+                      <Bar dataKey="hist" fill="#93C5FD" name="ヒスチE radius={[2,2,0,0]}/>
+                      <Line type="monotone" dataKey="macd"    stroke="#1D4ED8" strokeWidth={1.5} dot={false} name="MACD"/>
+                      <Line type="monotone" dataKey="macdSig" stroke="#F97316" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name="Signal"/>
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                  <div className="legend-row" style={{marginTop:6}}>
+                    <span><span className="legend-dot" style={{background:"#1D4ED8"}}/>MACD</span>
+                    <span><span className="legend-dot" style={{background:"#F97316"}}/>Signal</span>
+                    <span><span className="legend-dot" style={{background:"#93C5FD"}}/>Histogram</span>
+                  </div>
+                </div>
+              )}
+
+              {/* BB state */}
+              <div className="card" style={{marginTop:10,padding:"14px 16px"}}>
+                <div className="metric-label" style={{marginBottom:8}}>
+                  ボリンジャーバンド現在値
+                  <span className="help-tip" data-tip="価格の紁E5%が収まる「帯」です。上�Eバンドに触れると割高、下�Eバンドに触れると割安と判断されます、E>?</span>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                  {[["上限",latest?.upper,"#DBEAFE","#1D4ED8"],["中忁E,latest?.middle,"#F1F5F9","#475569"],["下限",latest?.lower,"#DCFCE7","#16A34A"]].map(([l,v,bg,c])=>(
+                    <div key={l} style={{background:bg,borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                      <div style={{fontSize:9,color:c,fontWeight:600,marginBottom:2}}>{l}</div>
+                      <div style={{fontSize:11,fontWeight:600,color:c}}>{v?fmtPrice(v,tick.id):" E}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* AI analysis card */}
+            <div className="card" style={{display:"flex",flexDirection:"column",gap:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#0F172A"}}>Lunaron AI 刁E��</div>
+                  <div style={{fontSize:11,color:"#64748B",marginTop:2}}>{tick.name}</div>
+                </div>
+              </div>
+
+              {/* Trend Gauge */}
+              {signal && (
+                <div style={{margin:"8px 0"}}>
+                  <div style={{display:"flex", justifyContent:"space-between", fontSize:10, color:"#64748B", fontWeight:600, marginBottom:4}}>
+                    <span>弱氁E(SELL)</span>
+                    <span>中竁E(HOLD)</span>
+                    <span>強氁E(BUY)</span>
+                  </div>
+                  <div style={{height:10, background:"linear-gradient(90deg, #EF4444 0%, #F59E0B 50%, #10B981 100%)", borderRadius:10, position:"relative"}}>
+                    <div style={{
+                      position:"absolute", top:-3, width:16, height:16, borderRadius:"50%", background:"#fff", border:"3px solid #0F172A",
+                      left: signal==="BUY" ? "85%" : signal==="SELL" ? "15%" : "50%", transform:"translateX(-50%)", transition:"left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      boxShadow:"0 2px 4px rgba(0,0,0,0.2)"
+                    }}></div>
+                  </div>
+                </div>
+              )}
+
+              <div className="ai-box" style={{flex:1, padding: analysis ? "0" : "12px", background: analysis ? "transparent" : "#F8FAFC", border: analysis ? "none" : "1px solid #E2E8F0"}}>
+                {analysisLoading
+                  ? <div className="thinking"><div className="thinking-dot"/><div className="thinking-dot"/><div className="thinking-dot"/><span className="thinking-text">刁E��中...</span></div>
+                  : analysis
+                    ? (
+                        <div style={{display:"flex", flexDirection:"column", gap:8}}>
+                          {analysis.split("### ").filter(b => b.trim()).map((block, i) => {
+                            if (!block.includes("、E)) return <span key={i}>{block}</span>;
+                            const parts = block.split('\n');
+                            const title = parts[0].trim();
+                            const content = parts.slice(1).join('\n').trim();
+                            let icon = "💬", color = "#1D4ED8", bg = "#EFF6FF";
+                            if (title.includes("結諁E)) { icon = "🎯"; color = "#16A34A"; bg = "#DCFCE7"; }
+                            else if (title.includes("根拠")) { icon = "📊"; color = "#0B1F3A"; bg = "#F1F5F9"; }
+                            else if (title.includes("リスク")) { icon = "⚠�E�E; color = "#DC2626"; bg = "#FEE2E2"; }
+                            else if (title.includes("アクションプラン")) { icon = "🚀"; color = "#7C3AED"; bg = "#F5F3FF"; }
+                            
+                            return (
+                              <div key={i} style={{padding:"10px 12px", background:bg, borderRadius:8, borderLeft:`3px solid ${color}`}}>
+                                <div style={{fontWeight:600, fontSize:12, color:color, marginBottom:4, display:"flex", alignItems:"center", gap:6}}>
+                                  <span>{icon}</span> {title}
+                                </div>
+                                <div style={{fontSize:11, color:"#334155", whiteSpace:"pre-wrap", lineHeight:1.5}}>{content}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )
+                    : <span className="ai-placeholder">
+                        持E��に基づぁE��刁E��を行います。個別の質問がある場合�E下に入力してください、E                      </span>
+                }
+              </div>
+              <textarea className="inp" style={{minHeight:60,fontSize:12,resize:"vertical"}}
+                placeholder="侁E こ�E銘柄の売り時はぁE���E�E10倍になる可能性はある�E�E
+                value={aiQuery} onChange={e=>setAiQuery(e.target.value)}
+                disabled={analysisLoading}/>
+              <button className="primary-btn" onClick={runAnalysis} disabled={analysisLoading}>
+                {analysisLoading ? "刁E��中..." : "◁E持E��からAI刁E��を実衁E}
+              </button>
+
+              <hr className="divider" style={{margin:"15px 0"}}/>
+              
+              {/* 直接対話チャチE��欁E*/}
+              <div style={{fontSize:12, fontWeight:700, color:"#7C3AED", marginBottom:8, display:"flex", alignItems:"center", gap:5}}>
+                <span>✨ AIアドバイザーに質問すめE/span>
+              </div>
+              <div style={{display:"flex", gap:8}}>
+                <input 
+                  type="text" 
+                  className="inp" 
+                  style={{fontSize:12, height:36}}
+                  placeholder="侁E 長期投賁E�EコチE�E�E�E 
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && runChat()}
+                />
+                <button className="primary-btn" onClick={runChat} disabled={chatLoading} style={{width:"auto", padding:"0 15px", height:36, background:"#7C3AED"}}>
+                  送信
+                </button>
+              </div>
+              {chatHistory.length > 1 && (
+                <div style={{marginTop:10, maxHeight:150, overflowY:"auto", padding:10, background:"#F8FAFC", borderRadius:8, border:"1px solid #E2E8F0", fontSize:11, display:"flex", flexDirection:"column", gap:8}}>
+                  {chatHistory.slice(-4).map((msg, i) => (
+                    <div key={i} style={{color: msg.role === "user" ? "#1D4ED8" : "#334155"}}>
+                      <strong>{msg.role === "user" ? "Q:" : "A:"}</strong> {msg.content}
+                    </div>
+                  ))}
+                  <div style={{textAlign:"center", marginTop:4}}>
+                    <button onClick={()=>setTab("chat")} style={{background:"none", border:"none", color:"#7C3AED", fontSize:10, fontWeight:600, cursor:"pointer"}}>
+                      全履歴を表示 ≫
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Quant summary */}
+              <hr className="divider"/>
+              <div className="metric-label">定量持E��サマリー</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {[
+                  ["RSI値",     latest?.rsi?.toFixed(1)??" E, latest?.rsi>70?"#DC2626":latest?.rsi<30?"#16A34A":"#0F172A", "買われすぎ・売られすぎを示す指標です、E0以上�E過�E�E�売りサイン�E�、E0以下�E売られすぎ�E�買ぁE��イン�E�とされます、E],
+                  ["MACD方吁E,  latest?.hist>0?"強氁EↁE:"弱氁EↁE, latest?.hist>0?"#16A34A":"#DC2626", "トレンド�E方向性を示す指標です。「強気」�E上�Eトレンド、「弱気」�E下落トレンドを示唁E��ます、E],
+                  ["前日毁E,    d?`${d.change_pct>=0?"+":""}${d.change_pct}%`:" E, d?.change_pct>=0?"#16A34A":"#DC2626", "直近�E終値と1日前�E終値の変動玁E��す、E],
+                  ["シャープ毁E, d?.sharpe?.toFixed(2)??" E, d?.sharpe>1?"#16A34A":d?.sharpe<0?"#DC2626":"#0F172A", "投賁E�E「効玁E�E良さ」を示します、E.0以上なら優秀、�Eイナスはリスクに見合ってぁE��ぁE��態です、E],
+                ].map(([k,v,c,tip])=>(
+                  <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
+                    <span style={{color:"#64748B", display:"flex", alignItems:"center"}}>
+                      {k}
+                      <span className="help-tip" data-tip={tip}>?</span>
+                    </span>
+                    <span style={{fontWeight:600,color:c}}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>}
+
+        {/* ══════════════════════════════════════════
+            TAB: AIチャチE��
+            ══════════════════════════════════════════ */}
+        {tab==="chat" && <>
+          <div className="card" style={{height:"calc(100vh - 250px)", display:"flex", flexDirection:"column", padding:0, overflow:"hidden"}}>
+            <div style={{background:"#0B1F3A", color:"#fff", padding:"12px 20px", fontSize:14, fontWeight:700, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+              <span>Lunaron AI 投賁E��諁E��ャチE��</span>
+              <span style={{fontSize:10, fontWeight:400, opacity:0.8}}>Powered by Qwen 2.5</span>
+            </div>
+            
+            <div style={{flex:1, overflowY:"auto", padding:20, display:"flex", flexDirection:"column", gap:15}}>
               {chatHistory.map((msg, i) => (
                 <div key={i} style={{
+                  maxWidth: "85%",
                   alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
                   background: msg.role === "user" ? "#0B1F3A" : "#F1F5F9",
-                  color: msg.role === "user" ? "#fff" : "#0B1F3A",
-                  padding: "10px 15px", borderRadius: 12, maxWidth: "80%", fontSize: 13
+                  color: msg.role === "user" ? "#fff" : "#1E293B",
+                  padding: "10px 15px",
+                  borderRadius: msg.role === "user" ? "18px 18px 2px 18px" : "18px 18px 18px 2px",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-wrap",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
                 }}>
                   {msg.content}
                 </div>
               ))}
-              {chatLoading && <div style={{fontSize:12, color:"#94A3B8"}}>AIが考え中...</div>}
+              {chatLoading && (
+                <div style={{alignSelf:"flex-start", background:"#F1F5F9", padding:"10px 15px", borderRadius:"18px 18px 18px 2px", fontSize:13}}>
+                  思老E��...
+                </div>
+              )}
             </div>
-            <div style={{display:"flex", gap:10, borderTop:"1px solid #E2E8F0", paddingTop:15}}>
-              <input className="inp" value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter" && runChat()} placeholder="投資について何でも相談してください" />
-              <button className="primary-btn" style={{width:"auto"}} onClick={runChat}>送信</button>
+            
+            <div style={{padding:15, background:"#fff", borderTop:"1px solid #E2E8F0", display:"flex", gap:10}}>
+              <input 
+                type="text" 
+                className="inp" 
+                placeholder="投賁E��つぁE��何でも聞ぁE��ください�E�例：NISAの始め方は�E�！E 
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && runChat()}
+                style={{flex:1}}
+              />
+              <button className="primary-btn" onClick={runChat} disabled={chatLoading} style={{width:"auto", padding:"0 20px"}}>
+                送信
+              </button>
             </div>
           </div>
-        )}
+        </>}
+        {tab==="portfolio" && <>
+          {/* Summary cards */}
+          <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
+            {[
+              ["投賁E��顁E, fmtYen(totalCost), null],
+              ["現在総顁E, fmtYen(totalVal),
+               <span className={totalPnlPct>=0?"pos":"neg"} style={{fontSize:11}}>
+                 {totalPnlPct>=0?"▲":"▼"}{Math.abs(totalPnlPct).toFixed(1)}%
+               </span>],
+              ["含み損益",
+               <span className={totalPnl>=0?"pos":"neg"} style={{fontSize:18,fontWeight:600}}>
+                 {totalPnl>=0?"+":""}{fmtYen(totalPnl)}
+               </span>, null],
+            ].map(([l,v,s],i)=>(
+              <div key={i} className="metric-card">
+                <div className="metric-label">{l}</div>
+                <div style={{fontSize:18,fontWeight:600,marginTop:2}}>{v}</div>
+                {s&&<div style={{marginTop:4}}>{s}</div>}
+              </div>
+            ))}
+          </div>
 
-        {tab === "portfolio" && (
-          <div className="card">
-            <h2>マイポートフォリオ</h2>
-            <p style={{marginTop:10, color:"#64748B"}}>現在、ポートフォリオ機能は準備中です。AIチャットで資産配分の相談ができます。</p>
+          {/* Asset Allocation Pie Chart */}
+          {pfData.length > 0 && (
+            <div className="card" style={{marginBottom:15, display:"flex", alignItems:"center", gap:20}}>
+              <div style={{flex:1}}>
+                <div className="metric-label" style={{marginBottom:10}}>アセチE��アロケーション (配�E比率)</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie
+                      data={pfData}
+                      dataKey="currentVal"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={2}
+                    >
+                      {pfData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(val, name) => [fmtYen(val), name]} contentStyle={{fontSize:11, borderRadius:8, border:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)"}}/>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{flex:1, display:"flex", flexDirection:"column", gap:8}}>
+                {pfData.slice().sort((a,b)=>b.currentVal - a.currentVal).map((h, i) => (
+                  <div key={h.id} style={{display:"flex", alignItems:"center", justifyContent:"space-between", fontSize:11}}>
+                    <div style={{display:"flex", alignItems:"center", gap:6}}>
+                      <div style={{width:8, height:8, borderRadius:"50%", background:PIE_COLORS[pfData.indexOf(h) % PIE_COLORS.length]}}></div>
+                      <span style={{fontWeight:500}}>{h.name}</span>
+                    </div>
+                    <div>
+                      <span style={{fontWeight:600}}>{((h.currentVal / totalVal) * 100).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Holdings Sections */}
+          {["PayPay", "NISA"].map(section => {
+            const sectionData = pfData.filter(h => (section==="PayPay" ? h.cat==="PayPay" : h.cat==="NISA"));
+            const sectionCost = sectionData.reduce((a,b)=>a+b.totalCost,0);
+            const sectionVal  = sectionData.reduce((a,b)=>a+b.currentVal,0);
+            const sectionPnl  = sectionVal - sectionCost;
+            const sectionPnlPct = sectionCost>0 ? (sectionPnl/sectionCost*100) : 0;
+
+            return (
+              <div key={section} className="card" style={{marginBottom:15, borderLeft:`4px solid ${section==="PayPay"?"#0B1F3A":"#8B5CF6"}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{fontSize:14,fontWeight:600,color:section==="PayPay"?"#0B1F3A":"#8B5CF6"}}>
+                    {section==="PayPay" ? "◁EPayPay ポイント運用枠" : "◁ENISA / 証券口座枠"}
+                  </div>
+                  <div style={{fontSize:12,fontWeight:600}}>
+                    小訁E {fmtYen(sectionVal)} 
+                    <span style={{marginLeft:8,color:sectionPnl>=0?"#16A34A":"#DC2626"}}>
+                      ({sectionPnl>=0?"+":""}{sectionPnlPct.toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+
+                {sectionData.length===0 ? (
+                  <div style={{textAlign:"center",padding:"16px 0",color:"#CBD5E1",fontSize:12}}>銘柄がありません</div>
+                ) : (
+                  <table className="pf-table">
+                    <thead>
+                      <tr>
+                        <th>銘柄</th>
+                        <th>数釁E/th>
+                        <th>取得単価</th>
+                        <th>評価顁E/th>
+                        <th>損益</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionData.map(h=>(
+                        <tr key={h.id}>
+                          <td>
+                            <div className="ticker-name" style={{color:h.col}}>{h.ticker}</div>
+                            <div className="ticker-sub">{h.name}</div>
+                          </td>
+                          <td style={{fontSize:13}}>{parseFloat(h.qty).toLocaleString()}</td>
+                          <td style={{fontSize:12}}>${parseFloat(h.buyPrice).toFixed(0)}</td>
+                          <td style={{fontSize:12,fontWeight:500}}>{fmtYen(h.currentVal)}</td>
+                          <td>
+                            <div style={{fontSize:12,fontWeight:600,color:h.pnl>=0?"#16A34A":"#DC2626"}}>
+                              {h.pnl>=0?"+":""}{fmtYen(h.pnl)}
+                            </div>
+                          </td>
+                          <td><button className="remove-btn" onClick={()=>removeHolding(h.id)}>✁E/button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Add holding form */}
+          <div className="card" style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div className="metric-label">銘柄を追加</div>
+              <div style={{display:"flex",gap:4,background:"#F1F5F9",padding:2,borderRadius:6}}>
+                <button onClick={()=>setIsSimpleMode(true)} 
+                  style={{fontSize:10,padding:"4px 10px",borderRadius:4,border:"none",cursor:"pointer",
+                    background:isSimpleMode?"#fff":"transparent", boxShadow:isSimpleMode?"0 1px 2px rgba(0,0,0,0.1)":"none"}}>
+                  冁E��入劁E(かんたん)
+                </button>
+                <button onClick={()=>setIsSimpleMode(false)}
+                  style={{fontSize:10,padding:"4px 10px",borderRadius:4,border:"none",cursor:"pointer",
+                    background:!isSimpleMode?"#fff":"transparent", boxShadow:!isSimpleMode?"0 1px 2px rgba(0,0,0,0.1)":"none"}}>
+                  数量で入劁E(詳細)
+                </button>
+              </div>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"120px 160px 1fr 1fr 1fr",gap:10,alignItems:"end"}} className="two-col">
+              <div>
+                <label className="form-label">運用枠</label>
+                <div style={{display:"flex",gap:4}}>
+                  {["PayPay", "NISA"].map(c=>(
+                    <button key={c} onClick={()=>setNewCat(c)}
+                      style={{
+                        flex:1, padding:"6px 0", borderRadius:6, fontSize:10, border:"1px solid #E2E8F0",
+                        background:newCat===c?"#0B1F3A":"#fff", color:newCat===c?"#fff":"#64748B",
+                        cursor:"pointer"
+                      }}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="form-label">銘柄</label>
+                <select className="sel" value={newTicker} onChange={e=>setNewTicker(e.target.value)}>
+                  {tickers.map(t=><option key={t.id} value={t.id}>{t.id}  E{t.name}</option>)}
+                </select>
+              </div>
+
+              {isSimpleMode ? (
+                <>
+                  <div>
+                    <label className="form-label">投賁E��た�Eイント�E金顁E(冁E</label>
+                    <input className="inp" type="number" placeholder="侁E 10000" 
+                      value={yenInvested} onChange={e=>setYenInvested(e.target.value)}/>
+                  </div>
+                  <div>
+                    <label className="form-label">今�E評価顁E(冁E</label>
+                    <input className="inp" type="number" placeholder="省略可" 
+                      value={yenCurrent} onChange={e=>setYenCurrent(e.target.value)}/>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="form-label">保有数釁E/label>
+                    <input className="inp" type="number" step="any" placeholder="侁E 1.5" 
+                      value={newQty} onChange={e=>setNewQty(e.target.value)}/>
+                  </div>
+                  <div>
+                    <label className="form-label">取得単価 ($USD)</label>
+                    <input className="inp" type="number" step="any" placeholder="侁E 490.0" 
+                      value={newBuy} onChange={e=>setNewBuy(e.target.value)}/>
+                  </div>
+                </>
+              )}
+
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <button onClick={addHolding} disabled={isSimpleMode ? !yenInvested : (!newQty||!newBuy)}
+                  style={{background:"#0B1F3A",color:"#fff",border:"none",padding:"9px 10px",
+                    borderRadius:8,fontSize:13,fontWeight:500,opacity:(isSimpleMode?!yenInvested:(!newQty||!newBuy))?0.4:1}}>
+                  �E�E追加
+                </button>
+                {isSimpleMode && <div style={{fontSize:9,color:"#94A3B8",textAlign:"center"}}>レーチE 1$ = {usdjpy}冁E/div>}
+              </div>
+            </div>
           </div>
-        )}
+
+          {/* Portfolio AI analysis */}
+          <div className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600}}>Lunaron AI  Eポ�Eトフォリオ診断</div>
+                <div style={{fontSize:10,color:"#94A3B8",marginTop:2}}>
+                  全保有銘柄を�E极EↁE継続保有・利益確定�E損�Eり�E判断と次のアクションを提案しまぁE                </div>
+              </div>
+            </div>
+            <div className="ai-box" style={{minHeight:130,marginBottom:12}}>
+              {pfLoading
+                ? <div className="thinking"><div className="thinking-dot"/><div className="thinking-dot"/><div className="thinking-dot"/><span className="thinking-text">ポ�Eトフォリオを�E析中...</span></div>
+                : pfAnalysis
+                  ? <span>{pfAnalysis}</span>
+                  : <span className="ai-placeholder">「�Eートフォリオ診断」を実行すると、各銘柄の判断と全体�Eリスク評価を提案します、E/span>
+              }
+            </div>
+            <button className="primary-btn" onClick={runPfAnalysis} disabled={pfLoading||pfData.length===0}>
+              {pfLoading ? "診断中..." : "◁Eポ�Eトフォリオ診断を実衁E}
+            </button>
+          </div>
+        </>}
+
+        {/* ══════════════════════════════════════════
+            TAB: GBM予測
+            ══════════════════════════════════════════ */}
+        {tab==="forecast" && <>
+        {/* Category Filter */}
+      <div style={{display:"flex",gap:8,padding:"0 4px",marginBottom:8}}>
+        {["すべて", "PayPay", "NISA"].map(c=>(
+          <button key={c} onClick={()=>setFilterCat(c)}
+            style={{
+              padding:"4px 12px", borderRadius:20, fontSize:10, border:"1px solid #E2E8F0",
+              background:filterCat===c?"#0B1F3A":"#fff", color:filterCat===c?"#fff":"#64748B",
+              cursor:"pointer", transition:"all 0.2s"
+            }}>
+            {c}
+          </button>
+        ))}
       </div>
 
-      <footer className="footer" style={{padding:"20px", textAlign:"center", borderTop:"1px solid #E4E9F0", marginTop:20}}>
-        <div style={{fontSize:12, color:"#64748B"}}>© 2026 LUNARON v3.5 (AI Chat Implementation)</div>
+      <div className="ticker-row" style={{marginBottom:15,padding:"0 4px",display:"flex",overflowX:"auto",gap:6}}>
+        {tickers
+          .filter(t => filterCat==="すべて" || (t.cat && t.cat.includes(filterCat)))
+          .map(t=>(
+          <button key={t.id} className={`ticker-btn ${tick.id===t.id?"active":""}`} onClick={()=>setTick(t)}
+            style={{flex:"0 0 100px",padding:"10px 5px",fontSize:11}}>
+            <strong>{t.id}</strong><br/>
+            <span style={{opacity:.8,fontSize:9,display:"block",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.name}</span>
+          </button>
+        ))}
+      </div>
+
+          {gbm && <>
+            <div className="metric-grid" style={{gridTemplateColumns:"repeat(4,1fr)"}}>
+              {[
+                ["現在価格", fmtPrice(latest.close,tick.id), "基溁E],
+                ["7日征E中央値", fmtPrice(gbm.forecast[gbm.forecast.length-1].p50,tick.id), "50パ�Eセンタイル"],
+                ["楽観シナリオ",  fmtPrice(gbm.forecast[gbm.forecast.length-1].p90,tick.id), "90パ�Eセンタイル"],
+                ["悲観シナリオ",  fmtPrice(gbm.forecast[gbm.forecast.length-1].p10,tick.id), "10パ�Eセンタイル"],
+              ].map(([l,v,s])=>(
+                <div key={l} className="metric-card">
+                  <div className="metric-label">{l}</div>
+                  <div style={{fontSize:16,fontWeight:600,marginTop:2}}>{v}</div>
+                  <div style={{fontSize:10,color:"#94A3B8",marginTop:2}}>{s}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="chart-panel">
+              <div className="chart-title">幾何ブラウン運動�E�EBM�E�E日間価格予測</div>
+              <div className="chart-sub">
+                数弁E dS = μS dt + σS dW&nbsp;&nbsp;|&nbsp;&nbsp;
+                年玁E�Eラ: {(gbm.annual_volatility*100).toFixed(1)}%&nbsp;&nbsp;
+                年玁E��征E��盁E {(gbm.annual_drift*100).toFixed(1)}%
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <ComposedChart data={gbm.forecast} margin={{top:4,right:8,bottom:0,left:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false}/>
+                  <XAxis dataKey="day" tick={{fontSize:10,fill:"#94A3B8"}} tickLine={false} axisLine={false}/>
+                  <YAxis tick={{fontSize:9,fill:"#94A3B8"}} tickLine={false} axisLine={false} width={56}
+                    tickFormatter={v=>tick.id==="BTC"||tick.id==="ETH"?"$"+(v/1000).toFixed(0)+"k":"$"+v.toFixed(0)}
+                    domain={[d=>d*0.995, d=>d*1.005]}/>
+                  <Tooltip content={<CustomTT/>}/>
+                  <Area dataKey="p90" stroke="none" fill="#DBEAFE" fillOpacity={0.7} name="90%ile"/>
+                  <Area dataKey="p10" stroke="none" fill="#fff"    fillOpacity={1}   name="10%ile"/>
+                  <Area dataKey="p75" stroke="none" fill="#BFDBFE" fillOpacity={0.6} name="75%ile"/>
+                  <Area dataKey="p25" stroke="none" fill="#fff"    fillOpacity={1}   name="25%ile"/>
+                  <Line type="monotone" dataKey="p90" stroke="#93C5FD" strokeWidth={1} dot={false} strokeDasharray="4 2" name="90%"/>
+                  <Line type="monotone" dataKey="p75" stroke="#60A5FA" strokeWidth={1} dot={false} strokeDasharray="3 2" name="75%"/>
+                  <Line type="monotone" dataKey="p50" stroke={col} strokeWidth={2.5}
+                    dot={{r:4,fill:col,stroke:"#fff",strokeWidth:2}} name="中央値"/>
+                  <Line type="monotone" dataKey="p25" stroke="#60A5FA" strokeWidth={1} dot={false} strokeDasharray="3 2" name="25%"/>
+                  <Line type="monotone" dataKey="p10" stroke="#93C5FD" strokeWidth={1} dot={false} strokeDasharray="4 2" name="10%"/>
+                </ComposedChart>
+              </ResponsiveContainer>
+              <div className="legend-row">
+                <span><span className="legend-dot" style={{background:col}}/>中央値 (50%)</span>
+                <span><span className="legend-dot" style={{background:"#60A5FA"}}/>25 E5% レンジ</span>
+                <span><span className="legend-dot" style={{background:"#93C5FD"}}/>10 E0% レンジ</span>
+              </div>
+            </div>
+
+            <div className="card">
+              <div style={{fontSize:12,fontWeight:600,marginBottom:10}}>GBMモチE��の解説</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}} className="two-col">
+                <div className="formula-box">
+                  <strong>数式�E吁E��ラメータ</strong><br/>
+                  dS = μS dt + σS dW<br/>
+                  ・ S : 株価<br/>
+                  ・ μ (ドリフト) : 期征E��益率 = {(gbm.annual_drift*100).toFixed(1)}% / 年<br/>
+                  ・ ρE(ボラチE��リチE��) : 変動玁E= {(gbm.annual_volatility*100).toFixed(1)}% / 年<br/>
+                  ・ dW : ブラウン運動�E�ランダムウォーク�E�E                </div>
+                <div className="formula-box">
+                  <strong>グラフ�E読み方</strong><br/>
+                  ・ 帯の幁EↁE価格の不確実性の大きさ<br/>
+                  ・ 中央値が右上がめEↁE上�Eバイアス<br/>
+                  ・ 悲観10%ile ↁEこれを下回る確玁E0%<br/>
+                  ・ 楽観90%ile ↁEこれを上回る確玁E0%<br/>
+                  ※ 過去チE�Eタに基づく統計的推定でぁE                </div>
+              </div>
+            </div>
+          </>}
+        </>}
+
+        {/* 投賁E��礎タチE*/}
+        {tab==="learn" && <>
+
+          {/* マインドセチE�� */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #0B1F3A"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0B1F3A",marginBottom:12}}>🧠 投賁E�E忁E��え�E��EインドセチE���E�E/div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[
+                ["📐 投賁E�E三原剁E,"収益性・安�E性・流動性のバランスを取ることが大刁E��す。高リターンを狙ぁE��ぎると、安�E性めE��金化のしやすさを犠牲にします、E],
+                ["📅 長期�E刁E��・積竁E,"長ぁE��間かけてコチE��チE��み立て、褁E��の賁E��に刁E��することでリスクを大幁E��下げられます。最も基本皁E��最も強力な戦略です、E],
+                ["💰 余裕賁E��で行う","生活費は絶対に使わなぁE��と。手取りの1、E割程度を目安に、なくなっても困らなぁE��E��だけで投賁E��ましょぁE��E],
+                ["🤁E自己責任の原則","SNSめE��コミだけで動かなぁE��と。情報は忁E��自刁E��確認し、最終判断は自刁E��行う習�EをつけましょぁE��E]
+              ].map(([t,d])=>(
+                <div key={t} style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+                  <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:6}}>{t}</div>
+                  <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>{d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 金融啁E�� */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #3B82F6"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>💹 主な金融啁E��と仕絁E��</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[
+                ["株弁E,"#DBEAFE","#1D4ED8","企業の成長めE�E当（インカムゲイン�E�を狙う。値上がり益と配当�E2つで稼げるのが基本です、E],
+                ["投賁E��訁E,"#DCFCE7","#16A34A","プロに運用を任せる仕絁E��。少額から始められ、�E動的に刁E��投賁E��きます。インチE��クスファンドがおすすめ、E],
+                ["ETF�E�上場投賁E��託！E,"#FEF9C3","#CA8A04","証券取引所でリアルタイムに売買できる投賁E��託。手数料が安く、流動性が高いのが特徴、E],
+                ["債券","#F3E8FF","#7C3AED","国めE��業にお��を貸す仕絁E��。利玁E�E低めだが安�E性が高く、株式�Eリスク緩和に使われます、E],
+                ["REIT�E�不動産投賁E��託！E,"#FEE2E2","#DC2626","不動産に少額から投賁E��きる仕絁E��。家賁E��入が�E当として刁E�Eされます、E]
+              ].map(([t,bg,c,d])=>(
+                <div key={t} style={{display:"flex",gap:12,padding:"10px 12px",background:bg,borderRadius:8,alignItems:"flex-start"}}>
+                  <span style={{fontWeight:700,color:c,fontSize:12,minWidth:130}}>{t}</span>
+                  <span style={{fontSize:11,color:"#334155",lineHeight:1.5}}>{d}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 税制 */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #10B981"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>🏦 お得な税制・制度</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{padding:"14px",background:"linear-gradient(135deg,#DCFCE7,#BBF7D0)",borderRadius:12}}>
+                <div style={{fontWeight:700,color:"#15803D",fontSize:13,marginBottom:6}}>🌿 NISA�E�少額投賁E��課税！E/div>
+                <div style={{fontSize:11,color:"#166534",lineHeight:1.6}}>投賁E��得た利益に税��がかかりません�E�通常は紁E0%課税）。年閁E60丁E�Eまで非課税で投賁E��き、E��期投賁E��最適です、Ebr/><strong>ↁEまず最初に使ぁE��き制度�E�E/strong></div>
+              </div>
+              <div style={{padding:"14px",background:"linear-gradient(135deg,#EFF6FF,#DBEAFE)",borderRadius:12}}>
+                <div style={{fontWeight:700,color:"#1D4ED8",fontSize:13,marginBottom:6}}>💎 iDeCo�E�個人型確定拠出年金！E/div>
+                <div style={{fontSize:11,color:"#1E3A8A",lineHeight:1.6}}>老後賁E��のための積立制度。掛け��が�E額所得控除になるため節税効果が高い、E0歳まで引き出せなぁE��、節税メリチE��が大きい、E/div>
+              </div>
+            </div>
+          </div>
+
+          {/* 刁E��手況E*/}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #F59E0B"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>🔍 刁E��の基礎知譁E/div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+                <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:8}}>📊 ファンダメンタルズ刁E��</div>
+                <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>
+                  企業の財務状況から本質皁E��価値を判断する方法、Ebr/>
+                  <strong>PER</strong>�E�株価収益玁E��E 低いほど割宁Ebr/>
+                  <strong>PBR</strong>�E�株価純賁E��倍率�E�E 1倍割れ�E特に割宁Ebr/>
+                  <strong>ROE</strong>�E��E己賁E��利益率�E�E 高いほど効玁E��な経営<br/>
+                  <strong>配当利回り</strong>: 高いほど安定収入が期征E��きる
+                </div>
+              </div>
+              <div style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+                <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:8}}>📈 チE��ニカル刁E���E�このチE�Eルで確認！E/div>
+                <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>
+                  チャート�E動きから売買タイミングを判断する方法、Ebr/>
+                  <strong>RSI</strong>: 買われすぎ・売られすぎの判断<br/>
+                  <strong>MACD</strong>: トレンド�E方向と転換点<br/>
+                  <strong>ボリンジャーバンチE/strong>: 価格の変動篁E��<br/>
+                  <strong>SMA�E�移動平坁E��！E/strong>: 中長期トレンド確誁E                </div>
+              </div>
+            </div>
+            <div style={{padding:"10px 14px",background:"#FFF7ED",borderRadius:8,border:"1px solid #FED7AA",marginTop:10,fontSize:11,color:"#9A3412"}}>
+              ⚠�E�E<strong>重要E��E/strong>どちら�E刁E��も丁E�Eではありません。両方を絁E��合わせて、褁E��の視点から判断することが大刁E��す、E            </div>
+          </div>
+
+          {/* リスク管琁E*/}
+          <div className="card" style={{borderLeft:"4px solid #EF4444"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>🛡�E�Eリスク管琁E�E鉁E��</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[
+                ["🌍 刁E��投賁E,"#EFF6FF","賁E���E�株・債券・金など�E��E地域（日本・米国・新興国�E��E時間�E�積立）を刁E��てリスクを�E散。一つが大きく下がっても�E体への影響を抑えられます、E],
+                ["✂︁E損�Eり（ストップロス�E�E,"#FFF7ED","損失が拡大する前に売却するルールを事前に決めること。例：、E10%になったら忁E��売る」。感惁E��流されず機械皁E��実行する�Eが�Eイントです、E],
+                ["⚖︁Eポ�Eトフォリオ管琁E,"#F0FDF4","自刁E�Eリスク許容度�E�どこまで損失に耐えられるか�E�に合わせて賁E��の割合を決め、定期皁E��見直す（リバランス�E�ことが長期�E功�E鍵です、E]
+              ].map(([t,bg,d])=>(
+                <div key={t} style={{padding:"12px 14px",background:bg,borderRadius:10,border:"1px solid #E2E8F0"}}>
+                  <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:6}}>{t}</div>
+                  <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>{d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>}
+
+        {/* Footer */}
+        <div className="footer" style={{background:"#7C3AED", color:"#fff", padding:"10px 20px", borderRadius:10, marginBottom:20}}>
+          <span style={{fontWeight:800}}>🚀 LUNARON Investment Dashboard v3.5 (LATEST) · {backendOk?"リアルチE�Eタ使用":"シミュレーションチE�Eタ使用"}</span>
+          <span style={{fontSize:10}}>AIチャチE��欁E��実裁E��ました。上�E「✨ AIアドバイザー」を確認してください、E/span>
+        </div>
+      </div>
+      {/* ── Footer ── */}
+      <footer style={{marginTop:40,padding:24,borderTop:"1px solid #E2E8F0",textAlign:"center"}}>
+        <div style={{fontSize:10,color:"#94A3B8"}}>
+          &copy; 2026 Lunaron AI Investment Dashboard. すべてのチE�Eタは刁E��用であり、投賁E��断は自己責任で行ってください、E        </div>
       </footer>
     </div>
   );
