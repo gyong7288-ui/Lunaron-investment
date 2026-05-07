@@ -734,7 +734,8 @@ if os.path.exists(os.path.join(FRONTEND_DIR, "lib")):
 
 @app.get("/")
 def read_index():
-    return FileResponse("frontend/index_v3.html")
+    print("Serving index_final.html at /")
+    return FileResponse("frontend/index_final.html")
 
 
 @app.get("/api/health")
