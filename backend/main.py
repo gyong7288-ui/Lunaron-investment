@@ -134,6 +134,16 @@ def _local_analysis(prompt: str) -> str:
     risks_text = "\n".join(f"・{r}" for r in risks) if risks else "・長期投資家にとって短期変動は「通過点」です\n・余裕資金内での投資を維持し、生活費との混同を避けてください"
     reasons_text = "\n".join(f"・{r}" for r in reasons)
     
+    # 質問に対する反応を簡易的に追加
+    q_lower = prompt.lower()
+    advice_extra = ""
+    if "今後" in q_lower or "将来" in q_lower or "予測" in q_lower:
+        advice_extra = "\n\n### 【今後のアクションプラン】\n1. 短期的なノイズに惑わされず、あらかじめ決めた資産配分（アセットアロケーション）を維持してください。\n2. 市場が急落した際のリバランス用として、一定のキャッシュ（現金）比率を確保しておくことが賢明です。\n3. 自動積立の設定を継続し、価格変動を味方につける「ドルコスト平均法」を最大限に活用しましょう。"
+    elif "いくら" in q_lower or "買" in q_lower:
+        advice_extra = "\n\n### 【今後のアクションプラン】\n1. 一括購入ではなく、数回に分けた「時間分散」によるエントリーを推奨します。\n2. 購入価格だけでなく、ポートフォリオ全体におけるその銘柄の比率が過大にならないよう調整してください。\n3. 万が一の想定シナリオ（20%下落など）を事前にシミュレーションし、パニック売りを防ぐ準備をしてください。"
+    else:
+        advice_extra = "\n\n### 【今後のアクションプラン】\n1. ポートフォリオの定期的な棚卸しを行い、本来の目的（老後資金、教育資金等）からズレていないか確認してください。\n2. 税制優遇制度（NISA/iDeCo等）の枠が残っている場合は、優先的に活用することを検討しましょう。\n3. 投資以外の自己研鑽や健康への投資も、長期的な資産形成において重要な要素です。"
+
     return f"""### 【結論】
 {action}
 {action_detail}
@@ -142,7 +152,7 @@ def _local_analysis(prompt: str) -> str:
 {reasons_text}
 
 ### 【リスク】
-{risks_text}"""
+{risks_text}{advice_extra}"""
 
 def hf_chat(prompt: str) -> str:
     """Hugging Face Inference APIを利用してテキスト生成（失敗時はローカル分析にフォールバック）"""
@@ -383,6 +393,37 @@ def get_indicators(ticker_id: str, period: str = "3mo"):
         gbm                            = gbm_forecast(closes)
         
         is_fallback = False
+
+        # --- 最新のサマリーデータと統計を取得 ---
+        summary_info = {}
+        try:
+            sd = t.summary_detail.get(meta["yf"], {})
+            ap = t.asset_profile.get(meta["yf"], {})
+            summary_info = {
+                "description": ap.get("longBusinessSummary", ""),
+                "pe":          sd.get("trailingPE", None),
+                "yield":       sd.get("yield", None),
+                "52wHigh":     sd.get("fiftyTwoWeekHigh", None),
+                "52wLow":      sd.get("fiftyTwoWeekLow", None),
+                "avgVol":      sd.get("averageVolume", None),
+            }
+        except:
+            pass
+        
+        return {
+            "name":        meta["name"],
+            "ticker":      ticker_id,
+            "dates":       dates,
+            "closes":      closes,
+            "rsi_arr":     rsi_arr,
+            "macd":        {"line": macd_line, "sig": macd_sig, "hist": macd_hist},
+            "bb":          {"upper": bb_upper, "mid": bb_mid, "lower": bb_lower},
+            "sharpe":      sharpe,
+            "gbm":         gbm,
+            "summary":     summary_info,
+            "is_fallback": is_fallback,
+        }
+
     except Exception as e:
         base = meta.get("base", 200)
         seed = meta.get("seed", 42)
@@ -496,16 +537,30 @@ GBM予測石7日後中央値: {gbm_vals['p50']:.2f} / 愉観(90%ile): {gbm_vals[
 - シャープ比率が負の場合は、リスクに見合ったリターンが得られていない状態。
 - SMA50がSMA200を上回り＝ゴールデンクロス（強気サイン）、下回り＝デッドクロス（警戒）。
 
-【ユーザー質問】 {req.query or 'なし'}
+【銘柄サマリー】
+{data.get('summary', {}).get('description', 'データなし')[:300]}...
 
-以下の形式で出力してください（各項目1、2行以内）:
+【直近の統計】
+- 52週高値: {data.get('summary', {}).get('52wHigh', '?')} / 52週安値: {data.get('summary', {}).get('52wLow', '?')}
+- 予想PER: {data.get('summary', {}).get('pe', '?')} / 配当利回り: {data.get('summary', {}).get('yield', 0)*100 if data.get('summary', {}).get('yield') else '?'}%
+
+【ユーザー質問】
+{req.query or 'この銘柄の現状分析と、今後どのような戦略をとるべきか教えてください。'}
+
+以下の形式で、プロのアドバイザーとして独自の判断を下して出力してください（具体的かつ論理的に）:
 
 ### 【結論】
-(推奨アクションを明確に: 積み追く（買い追がえ）/ 様子見（HOLD）/ 一部利益確定を検討）
+(推奨アクションを1行で)
+(その理由を2行程度で)
+
 ### 【根拠】
-(上記データに基づく海合いの理由を箇条書きで)
+(テクニカルデータと統計、サマリーに基づいた具体的な分析を箇条書きで)
+
 ### 【リスク】
-(掛かるリスクと対策を簡潔に)
+(現在考えられる具体的なリスクを簡潔に)
+
+### 【今後のアクションプラン】
+(ユーザーの質問への回答を含め、次に何をすべきか、どのようなタイミングで動くべきか、3つの具体的なステップを提案してください)
 """
 
         analysis = hf_chat(prompt)
