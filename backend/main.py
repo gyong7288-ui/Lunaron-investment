@@ -144,8 +144,12 @@ def _local_analysis(prompt: str) -> str:
     else:
         advice_extra = "\n\n### 【今後のアクションプラン】\n1. ポートフォリオの定期的な棚卸しを行い、本来の目的（老後資金、教育資金等）からズレていないか確認してください。\n2. 税制優遇制度（NISA/iDeCo等）の枠が残っている場合は、優先的に活用することを検討しましょう。\n3. 投資以外の自己研鑽や健康への投資も、長期的な資産形成において重要な要素です。"
 
+    # プロンプトから銘柄名を取得（あれば）
+    name_match = re.search(r'市場データ:\s*([^(]+)', prompt)
+    ticker_name = name_match.group(1).strip() if name_match else "この銘柄"
+
     return f"""### 【結論】
-{action}
+{ticker_name}については「{action}」が妥当と判断します。
 {action_detail}
 
 ### 【根拠】
