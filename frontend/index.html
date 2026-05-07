@@ -1060,8 +1060,43 @@ function App() {
                 value={aiQuery} onChange={e=>setAiQuery(e.target.value)}
                 disabled={analysisLoading}/>
               <button className="primary-btn" onClick={runAnalysis} disabled={analysisLoading}>
-                {analysisLoading ? "分析中..." : "◆ AI分析を実行"}
+                {analysisLoading ? "分析中..." : "◆ 指標からAI分析を実行"}
               </button>
+
+              <hr className="divider" style={{margin:"15px 0"}}/>
+              
+              {/* 直接対話チャット欄 */}
+              <div style={{fontSize:12, fontWeight:700, color:"#7C3AED", marginBottom:8, display:"flex", alignItems:"center", gap:5}}>
+                <span>✨ AIアドバイザーに質問する</span>
+              </div>
+              <div style={{display:"flex", gap:8}}>
+                <input 
+                  type="text" 
+                  className="inp" 
+                  style={{fontSize:12, height:36}}
+                  placeholder="例: 長期投資のコツは？" 
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && runChat()}
+                />
+                <button className="primary-btn" onClick={runChat} disabled={chatLoading} style={{width:"auto", padding:"0 15px", height:36, background:"#7C3AED"}}>
+                  送信
+                </button>
+              </div>
+              {chatHistory.length > 1 && (
+                <div style={{marginTop:10, maxHeight:150, overflowY:"auto", padding:10, background:"#F8FAFC", borderRadius:8, border:"1px solid #E2E8F0", fontSize:11, display:"flex", flexDirection:"column", gap:8}}>
+                  {chatHistory.slice(-4).map((msg, i) => (
+                    <div key={i} style={{color: msg.role === "user" ? "#1D4ED8" : "#334155"}}>
+                      <strong>{msg.role === "user" ? "Q:" : "A:"}</strong> {msg.content}
+                    </div>
+                  ))}
+                  <div style={{textAlign:"center", marginTop:4}}>
+                    <button onClick={()=>setTab("chat")} style={{background:"none", border:"none", color:"#7C3AED", fontSize:10, fontWeight:600, cursor:"pointer"}}>
+                      全履歴を表示 ≫
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Quant summary */}
               <hr className="divider"/>
@@ -1573,7 +1608,7 @@ function App() {
 
         {/* Footer */}
         <div className="footer">
-          <span>LUNARON Investment Dashboard v2.0 · {backendOk?"リアルデータ使用":"シミュレーションデータ使用"}</span>
+          <span>LUNARON Investment Dashboard v3.5 · {backendOk?"リアルデータ使用":"シミュレーションデータ使用"}</span>
           <span>投資は自己責任でお願いします · Not financial advice</span>
         </div>
       </div>
