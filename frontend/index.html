@@ -70,15 +70,19 @@ input, select { font-family: inherit; }
 .tabs {
   background: #fff; border-bottom: 1px solid #E4E9F0;
   display: flex; padding: 0 24px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
 .tab-btn {
   padding: 12px 18px; border: none; background: none;
   font-size: 13px; font-weight: 500; color: #94A3B8;
   border-bottom: 2px solid transparent; cursor: pointer;
   transition: color .15s, border-color .15s;
+  white-space: nowrap;
 }
 .tab-btn:hover { color: #475569; }
 .tab-btn.active { color: #0B1F3A; border-bottom-color: #0B1F3A; }
+.tab-btn.chat-highlight { color: #7C3AED; font-weight: 700; }
+.tab-btn.chat-highlight.active { border-bottom-color: #7C3AED; }
 
 /* ── Content ── */
 .content { padding: 18px 20px; }
@@ -774,12 +778,12 @@ function App() {
       <nav className="tabs">
         {[
           ["chart","◈ チャート分析"],
-          ["chat","💬 AIチャット"],
+          ["chat","✨ AI投資相談"],
           ["portfolio","◉ ポートフォリオ"],
           ["forecast","◎ GBM予測"],
           ["learn","📚 投資基礎"]
         ].map(([k,l])=>(
-          <button key={k} className={`tab-btn ${tab===k?"active":""}`} onClick={()=>setTab(k)}>{l}</button>
+          <button key={k} className={`tab-btn ${tab===k?"active":""} ${k==="chat"?"chat-highlight":""}`} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </nav>
 
