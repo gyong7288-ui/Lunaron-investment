@@ -369,6 +369,7 @@ def get_indicators(ticker_id: str, period: str = "3mo"):
     if not meta:
         raise HTTPException(404, f"Ticker '{ticker_id}' not found")
 
+    summary_info = {}
     try:
         t = Ticker(meta["yf"])
         hist = t.history(period=period, interval="1d")
@@ -395,7 +396,6 @@ def get_indicators(ticker_id: str, period: str = "3mo"):
         is_fallback = False
 
         # --- 最新のサマリーデータと統計を取得 ---
-        summary_info = {}
         try:
             sd = t.summary_detail.get(meta["yf"], {})
             ap = t.asset_profile.get(meta["yf"], {})
@@ -409,20 +409,6 @@ def get_indicators(ticker_id: str, period: str = "3mo"):
             }
         except:
             pass
-        
-        return {
-            "name":        meta["name"],
-            "ticker":      ticker_id,
-            "dates":       dates,
-            "closes":      closes,
-            "rsi_arr":     rsi_arr,
-            "macd":        {"line": macd_line, "sig": macd_sig, "hist": macd_hist},
-            "bb":          {"upper": bb_upper, "mid": bb_mid, "lower": bb_lower},
-            "sharpe":      sharpe,
-            "gbm":         gbm,
-            "summary":     summary_info,
-            "is_fallback": is_fallback,
-        }
 
     except Exception as e:
         base = meta.get("base", 200)
@@ -490,6 +476,7 @@ def get_indicators(ticker_id: str, period: str = "3mo"):
         "sharpe":      round(sharpe, 3),
         "signal":      signal,
         "gbm":         gbm,
+        "summary":     summary_info,
         "is_fallback": is_fallback,
         "expert": {
             "fg_val": round(fg_val),
