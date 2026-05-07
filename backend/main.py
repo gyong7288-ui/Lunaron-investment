@@ -158,22 +158,27 @@ def _local_analysis(prompt: str) -> str:
 ### 【リスク】
 {risks_text}{advice_extra}"""
 
-def hf_chat(prompt: str) -> str:
+def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
     """Hugging Face Inference APIを利用してテキスト生成（失敗時はローカル分析にフォールバック）"""
-    # HF_TOKENがある場合のみ外部API呼び出しを試みる
     if HF_TOKEN:
         try:
-            # Serverless Inference APIの新エンドポイント
             model_url = "https://api-inference.huggingface.co/v1/chat/completions"
             headers = {
                 "Authorization": f"Bearer {HF_TOKEN}",
                 "Content-Type": "application/json"
             }
+            messages = []
+            if system:
+                messages.append({"role": "system", "content": system})
+            if history:
+                messages.extend(history)
+            messages.append({"role": "user", "content": prompt})
+            
             payload = {
                 "model": "Qwen/Qwen2.5-72B-Instruct",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 500,
-                "temperature": 0.7,
+                "messages": messages,
+                "max_tokens": 600,
+                "temperature": 0.75,
             }
             res = requests.post(model_url, headers=headers, json=payload, timeout=30)
             if res.status_code == 200:
@@ -186,6 +191,61 @@ def hf_chat(prompt: str) -> str:
     
     # HF_TOKENなし or API失敗時 → ローカル分析エンジンを使用
     return _local_analysis(prompt)
+
+
+def _local_chat(message: str, history: list = None) -> str:
+    """一般的な投資質問に対するローカルフォールバック会話エンジン"""
+    import random
+    m = message.lower()
+    
+    # 積立・ドルコスト
+    if any(k in m for k in ["積立", "ドルコスト", "毎月", "定期"]):
+        return random.choice([
+            "積立投資（ドルコスト平均法）は、長期投資において最も有効な戦略の一つです。毎月一定額を買い付けることで、高い時は少なく・安い時は多く買える仕組みが自動的に働きます。特に感情的な売買を避けたい方に最適です。何年後に使う資金の積立ですか？",
+            "定期積立は「時間の分散」を実現する黄金ルールです。市場が下がった月こそ多くの口数が買えるため、長期的には平均購入単価を下げる効果があります。NISA口座での積立も検討されていますか？",
+        ])
+    
+    # NISA/iDeCo
+    if any(k in m for k in ["nisa", "ニーサ", "ideco", "イデコ", "税"]):
+        return "NISA（少額投資非課税制度）とiDeCoは、日本の投資家が最優先で活用すべき制度です。\n\n• **新NISA**: 年360万円まで非課税で投資可能。いつでも出金OK\n• **iDeCo**: 掛け金が全額所得控除。60歳まで引き出し不可\n\n一般的には「新NISA→iDeCo」の順で枠を埋めるのが効率的です。どちらについてもっと詳しく聞きますか？"
+    
+    # リスクについて
+    if any(k in m for k in ["リスク", "怖い", "損", "下がる", "暴落"]):
+        return random.choice([
+            "投資のリスクを怖いと感じるのは、とても正常な感覚です。大切なのは「リスクをゼロにする」のではなく「許容できるリスクを把握する」こと。\n\n原則として：\n・生活費6ヶ月分は現金で保持\n・投資は余裕資金のみで行う\n・一つの銘柄への集中投資を避ける\n\n現在どのような点が特に不安ですか？",
+            "株価の下落は怖いですが、長期投資家にとっては「セール」とも言えます。過去のデータを見ると、S&P500はどんな暴落からも回復してきました。重要なのは「いつ戻るか」ではなく「市場に居続けること」です。",
+        ])
+    
+    # 初心者
+    if any(k in m for k in ["初心者", "始め", "わからない", "入門", "どうすれば"]):
+        return "投資を始める際の基本ステップです：\n\n1️⃣ **証券口座を開設** → SBI証券・楽天証券が初心者に人気\n2️⃣ **新NISAの口座を設定** → 税制優遇を最大活用\n3️⃣ **インデックスファンドから** → S&P500やオルカン（全世界株）など\n4️⃣ **毎月一定額を積立** → 余裕資金の範囲内で\n\nまず何から知りたいですか？証券口座の選び方、銘柄の選び方、それとも仕組みから？"
+    
+    # 分散投資
+    if any(k in m for k in ["分散", "ポートフォリオ", "組み合わせ", "配分"]):
+        return "分散投資は「卵を一つのカゴに盛るな」という投資の鉄則です。\n\n代表的な分散方法：\n• **地域分散**: 日本・米国・新興国など\n• **資産分散**: 株式・債券・金・不動産（REIT）\n• **時間分散**: 積立投資でタイミングをずらす\n\nシンプルな例として、「全世界株インデックス（オルカン）70% + 債券20% + 現金10%」は多くの専門家が推奨する基本構成です。今のポートフォリオ構成はどのような状態ですか？"
+    
+    # VOO/QQQ/S&P500について
+    if any(k in m for k in ["voo", "qqq", "s&p", "sp500", "nasdaq", "ナスダック"]):
+        ticker_info = {
+            "voo": "VOO（バンガードS&P500ETF）は米国の主要500社に分散投資できるETFです。低コスト（経費率0.03%）で長期投資の定番。",
+            "qqq": "QQQ（インベスコQQQトラスト）はNASDAQ100に連動し、Apple・Microsoft・NVIDIAなどテクノロジー大手への集中投資ができます。VOOよりハイリスク・ハイリターン。",
+        }
+        for k, v in ticker_info.items():
+            if k in m:
+                return v + "\n\nこの銘柄について具体的に何が知りたいですか？（購入タイミング・リスク・他との比較など）"
+    
+    # 売り時
+    if any(k in m for k in ["売り", "売る", "利確", "利益確定"]):
+        return "売り時の判断は、買うより難しいと言われます。いくつかの考え方：\n\n• **目標達成時**: 「◯%利益が出たら一部売却」と事前に決めておく\n• **リバランス時**: 配分が崩れたら売って調整\n• **生活資金が必要な時**: 目的が来たら使う\n• **コア資産は売らない**: インデックスETFは原則「持ち続ける」\n\nどの銘柄の売り時を考えていますか？"
+    
+    # 汎用的な投資アドバイス
+    responses = [
+        f"「{message}」についてですね。投資で大切な三原則は「長期・分散・積立」です。この観点からアドバイスすると、短期的な価格変動に一喜一憂せず、目標に向けて淡々と続けることが最も重要です。もう少し具体的に教えていただけますか？",
+        f"ご質問ありがとうございます。「{message}」は多くの投資家が気にする点です。まず確認させてください：投資の目的（老後・教育・資産形成等）と、大体の投資期間はどのくらいを考えていますか？それによってアドバイスが変わります。",
+        f"良い質問です。「{message}」について、投資の基本原則から答えると：感情ではなくデータと計画に基づいた判断が重要です。市場の短期的なノイズに惑わされず、自分の投資方針を事前に決めておくことで、パニック売りを防げます。具体的に何が気になっていますか？",
+    ]
+    return random.choice(responses)
+
 
 # ─── (以下は不要になったOllama関連をモック化) ---
 def check_ollama():
@@ -357,6 +417,16 @@ class PortfolioHolding(BaseModel):
 
 class PortfolioRequest(BaseModel):
     holdings: list[PortfolioHolding]
+
+
+class ChatMessage(BaseModel):
+    role: str   # "user" or "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: Optional[list[ChatMessage]] = None
 
 
 # ─── エンドポイント ───────────────────────────────────────────────────────────
@@ -558,6 +628,34 @@ GBM予測石7日後中央値: {gbm_vals['p50']:.2f} / 愉観(90%ile): {gbm_vals[
         return {"signal": data["signal"], "analysis": analysis, "is_fallback": data["is_fallback"]}
     except Exception as e:
         return {"signal": "HOLD", "analysis": f"分析実行エラー: {str(e)}", "is_fallback": True}
+
+
+@app.post("/api/chat")
+def chat_with_ai(req: ChatRequest):
+    """投資に関する一般的な質問に回答するAIチャットエンドポイント"""
+    system_prompt = """あなたは優秀な投資アドバイザー「Lunaron AI」です。
+ユーザーの投資に関する質問に対し、専門的かつ親しみやすい日本語で回答してください。
+回答の際は以下の原則を重視してください：
+1. 長期・積立・分散投資のメリットを伝える
+2. リスク管理（余裕資金での投資、生活防衛資金の確保）を強調する
+3. 制度（NISA/iDeCo等）の活用を勧める
+4. 断定的な将来予測は避け、統計的・歴史的な傾向に基づいたアドバイスを行う
+"""
+    history_list = []
+    if req.history:
+        for msg in req.history:
+            history_list.append({"role": msg.role, "content": msg.content})
+
+    try:
+        # HF API or Fallback
+        if HF_TOKEN:
+            response = hf_chat(req.message, system=system_prompt, history=history_list)
+        else:
+            response = _local_chat(req.message, history=history_list)
+        
+        return {"response": response}
+    except Exception as e:
+        return {"response": f"申し訳ありません。エラーが発生しました: {str(e)}"}
 
 
 @app.post("/api/portfolio/analyze")

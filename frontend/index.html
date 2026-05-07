@@ -498,6 +498,13 @@ function App() {
   const [yenInvested, setYenInvested] = useState("");
   const [yenCurrent, setYenCurrent] = useState("");
   const [ollamaStatus, setOllamaStatus] = useState({ ollama_running: false, gemma3_ready: false, message: "確認中..." });
+  
+  /* チャット機能の状態 */
+  const [chatHistory, setChatHistory] = useState([
+    { role: "assistant", content: "こんにちは！投資アドバイザーのLunaron AIです。投資の基礎知識やNISAの活用方法、リスク管理など、何でも気軽に聞いてくださいね。" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
 
   /* バックエンド疎通確認 */
   useEffect(() => {
@@ -552,9 +559,10 @@ function App() {
   }, [backendOk]);
 
   useEffect(() => {
+    setIndicatorData(null); // 切り替え時に一旦クリア
     fetchIndicators(tick);
     setAnalysis(""); setSignal(null);
-  }, [tick]);
+  }, [tick, fetchIndicators]);
 
   /* AI分析実行 */
   const runAnalysis = async () => {
@@ -580,6 +588,38 @@ function App() {
       : "AI(Ollama)が起動していません。ターミナルで `ollama serve` を実行してください。";
     setAnalysis(msg);
     setAnalysisLoading(false);
+  };
+
+  /* AIチャット実行 */
+  const runChat = async () => {
+    if (!chatInput.trim() || chatLoading) return;
+    const userMsg = chatInput.trim();
+    setChatInput("");
+    setChatLoading(true);
+    
+    const newHistory = [...chatHistory, { role: "user", content: userMsg }];
+    setChatHistory(newHistory);
+
+    if (backendOk) {
+      try {
+        const r = await fetch(`${API_BASE}/api/chat`, {
+          method: "POST", headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({ message: userMsg, history: chatHistory })
+        });
+        const data = await r.json();
+        if (data.response) {
+          setChatHistory(prev => [...prev, { role: "assistant", content: data.response }]);
+          setChatLoading(false);
+          return;
+        }
+      } catch (e) { console.error(e); }
+    }
+    
+    // バックエンド未接続時の簡易的な自動応答（デモ用）
+    setTimeout(() => {
+      setChatHistory(prev => [...prev, { role: "assistant", content: "現在AIサーバーとの接続が不安定なようです。投資の基本原則（長期・分散・積立）を守ることで、多くのリスクを軽減できますよ。具体的な銘柄分析は「チャート分析」タブから行えます。" }]);
+      setChatLoading(false);
+    }, 1000);
   };
 
   /* ポートフォリオ診断 */
@@ -732,7 +772,13 @@ function App() {
 
       {/* ── Tabs ── */}
       <nav className="tabs">
-        {[["chart","◈ チャート分析"],["portfolio","◉ ポートフォリオ"],["forecast","◎ GBM予測"],["learn","📚 投資基礎"]].map(([k,l])=>(
+        {[
+          ["chart","◈ チャート分析"],
+          ["chat","💬 AIチャット"],
+          ["portfolio","◉ ポートフォリオ"],
+          ["forecast","◎ GBM予測"],
+          ["learn","📚 投資基礎"]
+        ].map(([k,l])=>(
           <button key={k} className={`tab-btn ${tab===k?"active":""}`} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </nav>
@@ -1036,8 +1082,55 @@ function App() {
         </>}
 
         {/* ══════════════════════════════════════════
-            TAB: ポートフォリオ
+            TAB: AIチャット
             ══════════════════════════════════════════ */}
+        {tab==="chat" && <>
+          <div className="card" style={{height:"calc(100vh - 250px)", display:"flex", flexDirection:"column", padding:0, overflow:"hidden"}}>
+            <div style={{background:"#0B1F3A", color:"#fff", padding:"12px 20px", fontSize:14, fontWeight:700, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+              <span>Lunaron AI 投資相談チャット</span>
+              <span style={{fontSize:10, fontWeight:400, opacity:0.8}}>Powered by Qwen 2.5</span>
+            </div>
+            
+            <div style={{flex:1, overflowY:"auto", padding:20, display:"flex", flexDirection:"column", gap:15}}>
+              {chatHistory.map((msg, i) => (
+                <div key={i} style={{
+                  maxWidth: "85%",
+                  alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+                  background: msg.role === "user" ? "#0B1F3A" : "#F1F5F9",
+                  color: msg.role === "user" ? "#fff" : "#1E293B",
+                  padding: "10px 15px",
+                  borderRadius: msg.role === "user" ? "18px 18px 2px 18px" : "18px 18px 18px 2px",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-wrap",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+                }}>
+                  {msg.content}
+                </div>
+              ))}
+              {chatLoading && (
+                <div style={{alignSelf:"flex-start", background:"#F1F5F9", padding:"10px 15px", borderRadius:"18px 18px 18px 2px", fontSize:13}}>
+                  思考中...
+                </div>
+              )}
+            </div>
+            
+            <div style={{padding:15, background:"#fff", borderTop:"1px solid #E2E8F0", display:"flex", gap:10}}>
+              <input 
+                type="text" 
+                className="inp" 
+                placeholder="投資について何でも聞いてください（例：NISAの始め方は？）" 
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && runChat()}
+                style={{flex:1}}
+              />
+              <button className="primary-btn" onClick={runChat} disabled={chatLoading} style={{width:"auto", padding:"0 20px"}}>
+                送信
+              </button>
+            </div>
+          </div>
+        </>}
         {tab==="portfolio" && <>
           {/* Summary cards */}
           <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
