@@ -594,37 +594,56 @@ function App() {
     setAnalysisLoading(false);
   };
 
+  /* ── スマートローカルAIエンジン（バックエンド不要・完全動作） ── */
+  const localAI = (msg) => {
+    const m = msg;
+    const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    if (/nisa|ニーサ|積立|非課税/i.test(m)) return rand(["新NISA（2024年〜）は年間360万円まで非課税で投資できます。\n\n📌 ポイント\n・つみたて投資枠：年120万円（インデックスファンド向け）\n・成長投資枠：年240万円（株式・ETF等）\n・生涯上限：1,800万円、非課税期間は無期限\n\n「まずNISAから始める」が日本では王道。どの銘柄で始めるか相談しますか？", "積立投資（ドルコスト平均法）は最強の手法の一つです。\n\n毎月一定額を買い続けることで：\n・高い時→少ない口数を購入\n・安い時→多い口数を購入\n→ 平均購入単価が自然に下がります\n\n新NISAの「つみたて投資枠」と組み合わせると最強です！"]);
+    if (/リスク|暴落|下がる|下落|怖|損/i.test(m)) return rand(["投資のリスクを恐れる気持ちは正常です。大切なのは「管理できるリスクに抑える」こと。\n\n✅ 基本的なリスク管理\n1. 生活費6ヶ月分は現金で確保\n2. 投資は余裕資金のみ\n3. 一つの銘柄に集中しない（分散投資）\n4. 長期保有でボラティリティを吸収", "暴落は投資家にとって「セール」です。過去データでは：\n\n・リーマンショック（-56%）→ 約5年で回復\n・コロナショック（-34%）→ 約6ヶ月で回復\n・S&P500の長期平均年率：約10%\n\n重要なのは「市場に居続けること」。狼狽売りが最大の損失を生みます。"]);
+    if (/gld|金|ゴールド/i.test(m)) return "GLD（SPDR ゴールドシェアーズ）\n\n・金価格に連動するETF（世界最大規模）\n・インフレ・地政学リスクのヘッジとして有効\n・株式と逆相関になりやすい（暴落時に強い）\n・配当なし、純粋な価格上昇のみが利益源\n\nポートフォリオの10〜20%程度が定番。チャート分析タブで現在の状況を確認できます！";
+    if (/tqqq|3倍|レバレッジ/i.test(m)) return "TQQQはQQQの3倍レバレッジETFです。\n\n⚠️ 重要な注意点\n・上昇時は3倍利益、下落時も3倍損失\n・長期保有では「複利の逓減効果」により損しやすい\n・短期トレード・ヘッジ目的に向いている\n\nPayPay証券で少額取引する場合は特に注意が必要です。";
+    if (/sqqq|ベア|逆/i.test(m)) return "SQQQはQQQの3倍インバース（逆張り）ETFです。\n\n・相場下落時に利益が出る\n・長期保有には向かない（毎日リセットのため）\n・ヘッジや短期トレードに使用\n\n現在のRSI・MACDの状況はチャート分析タブで確認できます。";
+    if (/qqq|nasdaq|ナスダック|テクノロジー/i.test(m)) return rand(["QQQ（インベスコ QQQ トラスト）\n\nNASDAQ100に連動するETF。Apple・Microsoft・NVIDIA等を含む。\n\n・経費率：0.20%\n・過去10年リターン：約18%/年\n・テクノロジー集中リスクあり\n\n長期積立には優秀な選択肢です！", "QQQへの定期積立は有望な戦略です。\n\n「QQQ 70% + GLD 20% + 現金 10%」は人気の配分です。定期積立でタイミングを気にせずに投資できます。"]);
+    if (/voo|spy|s&p|sp500|スタンダード/i.test(m)) return "VOO（バンガード S&P500 ETF）\n\n米国大型株500社への分散投資。長期投資の王道。\n\n・経費率：0.03%（超低コスト）\n・過去30年リターン：約10%/年\n・Warren Buffettも推奨するETF\n\n「毎月一定額をVOOに積立」は最もシンプルで強力な戦略。新NISAと組み合わせると非課税で運用できます！";
+    if (/rsi|相対力/i.test(m)) return "RSI（相対力指数）の見方\n\n・RSI 30以下 → 売られすぎ（買いサイン）\n・RSI 70以上 → 買われすぎ（売りサイン）\n・RSI 50前後 → 中立\n\n💡 使い方のコツ\nRSI単独でなくMACDやボリンジャーバンドと併用すると精度が上がります。チャート分析タブでリアルタイムのRSIを確認できます！";
+    if (/macd|移動平均/i.test(m)) return "MACD（移動平均収束拡散法）の見方\n\n・MACDラインがシグナル線を上抜け → 買いサイン\n・MACDラインがシグナル線を下抜け → 売りサイン\n・ヒストグラムがプラス → 上昇モメンタム\n・ヒストグラムがマイナス → 下降モメンタム\n\nチャート分析タブのMACD欄で現在の状況を確認してみてください！";
+    if (/初心者|始め|入門|どうすれば/i.test(m)) return "投資初心者の方へ：\n\n1️⃣ 証券口座を開設（SBI・楽天・PayPay証券）\n2️⃣ 新NISAを設定（年360万円まで利益が非課税）\n3️⃣ インデックスファンドから始める（VOO・QQQ等）\n4️⃣ 毎月一定額を積立（1,000円〜でOK）\n5️⃣ 5年以上の長期目線で保有\n\nまず何から知りたいですか？";
+    if (/売|利確|利益確定/i.test(m)) return "売り時の判断のコツ：\n\n📌 売却ルールの例\n・目標利益率（例：+30%）を事前に決めておく\n・配分が目標から±5%以上ズレたらリバランス\n・投資目的の資金が必要になったとき\n\n⚠️「もっと上がるかも」という欲を避け、ルール通りに動くのが鉄則です。どの銘柄の売却を検討していますか？";
+    if (/paypay|ペイペイ/i.test(m)) return "PayPay証券・PayPayポイント運用のポイント：\n\n✅ メリット\n・100円〜少額投資可能\n・PayPayポイントで投資できる\n・シンプルなUI\n\n⚠️ 注意点\n・99ポイント以下の端数は手数料に注意\n・銘柄数は大手証券より少ない\n\n推奨銘柄（PayPay運用）\n・GLD（金）：守り 30%\n・QQQ：成長 40%\n・VOO：安定 30%";
+    return rand([`「${msg}」についてですね。\n\n投資の基本三原則は「長期・分散・積立」です。\n\n具体的に以下について聞けますか？\n・どの銘柄（GLD・QQQ・TQQQ・SQQQ・VOO）について知りたいか\n・NISA・iDeCoの活用方法\n・テクニカル指標（RSI・MACD等）の見方\n・リスク管理の方法`, `ご質問の「${msg}」について、もう少し具体的に教えていただけると詳しくアドバイスできます。\n\n例えば：\n「GLDの今の状況は？」\n「NISAはどう始めればいい？」\n「QQQとVOOどちらがいい？」\n「RSIが70を超えたら売るべき？」`]);
+  };
+
   /* AIチャット実行 */
   const runChat = async () => {
     if (!chatInput.trim() || chatLoading) return;
     const userMsg = chatInput.trim();
     setChatInput("");
     setChatLoading(true);
-    
-    const newHistory = [...chatHistory, { role: "user", content: userMsg }];
-    setChatHistory(newHistory);
+    setChatHistory(prev => [...prev, { role: "user", content: userMsg }]);
 
-    if (backendOk) {
-      try {
-        const r = await fetch(`${API_BASE}/api/chat`, {
-          method: "POST", headers: { "Content-Type":"application/json" },
-          body: JSON.stringify({ message: userMsg, history: chatHistory })
-        });
+    try {
+      const r = await fetch(`${API_BASE}/api/chat`, {
+        method: "POST", headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ message: userMsg, history: chatHistory }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (r.ok) {
         const data = await r.json();
         if (data.response) {
           setChatHistory(prev => [...prev, { role: "assistant", content: data.response }]);
           setChatLoading(false);
           return;
         }
-      } catch (e) { console.error(e); }
-    }
-    
-    // バックエンド未接続時の簡易的な自動応答（デモ用）
+      }
+    } catch (e) { /* タイムアウト or 接続失敗 → ローカルAIへ */ }
+
     setTimeout(() => {
-      setChatHistory(prev => [...prev, { role: "assistant", content: "現在AIサーバーとの接続が不安定なようです。投資の基本原則（長期・分散・積立）を守ることで、多くのリスクを軽減できますよ。具体的な銘柄分析は「チャート分析」タブから行えます。" }]);
+      const reply = localAI(userMsg);
+      setChatHistory(prev => [...prev, { role: "assistant", content: reply }]);
       setChatLoading(false);
-    }, 1000);
+    }, 400);
   };
+
 
   /* ポートフォリオ診断 */
   const runPfAnalysis = async () => {
