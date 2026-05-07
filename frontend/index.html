@@ -746,7 +746,7 @@ function App() {
           <div className="header-logo"><div className="header-logo-dot"/></div>
           <div>
             <div className="header-title">LUNARON</div>
-            <div className="header-sub">Investment Dashboard v2.0</div>
+            <div className="header-sub">Investment Dashboard v3.5 <span style={{color:"#7C3AED", fontWeight:700}}>(AI Chat Enabled)</span></div>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:20}}>
@@ -783,7 +783,8 @@ function App() {
           ["forecast","◎ GBM予測"],
           ["learn","📚 投資基礎"]
         ].map(([k,l])=>(
-          <button key={k} className={`tab-btn ${tab===k?"active":""} ${k==="chat"?"chat-highlight":""}`} onClick={()=>setTab(k)}>{l}</button>
+          <button key={k} className={`tab-btn ${tab===k?"active":""} ${k==="chat"?"chat-highlight":""}`} 
+            onClick={()=>{ console.log("Switching to", k); setTab(k); }}>{l}</button>
         ))}
       </nav>
 
