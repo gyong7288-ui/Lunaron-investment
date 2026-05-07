@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LUNARON — Investment Dashboard</title>
+<script src="/lib/react.min.js"></script>
+<script src="/lib/react-dom.min.js"></script>
+<script src="/lib/prop-types.min.js"></script>
+<script src="/lib/recharts.min.js"></script>
+<script src="/lib/babel.min.js"></script>
+
+<script>
+  // Babel を介さない素の JS でチェック
+  window.addEventListener('DOMContentLoaded', () => {
+    console.log('Library Check:', {
+      React: typeof React,
+      ReactDOM: typeof ReactDOM,
+      PropTypes: typeof PropTypes,
+      Recharts: typeof Recharts
+    });
+    if (typeof Recharts === 'undefined') {
+      const msg = "Critical Error: Recharts is not defined. Attempting fallback name...";
+      console.error(msg);
+      // 万が一別の名前で登録されている場合
+      window.Recharts = window.Recharts || window.recharts || window.RECHARTS;
+    }
+  });
+</script>
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: 'Helvetica Neue', 'Hiragino Sans', 'Meiryo', Arial, sans-serif;
+  background: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%);
+  color: #0B1F3A;
+  min-height: 100vh;
+}
+button { cursor: pointer; font-family: inherit; }
+input, select { font-family: inherit; }
+
+/* ── Layout ── */
+.app-wrapper { width: 100%; max-width: 100%; margin: 0 auto; padding: 0 0 40px; }
+
+/* ── Header ── */
+.header {
+  background: #fff;
+  border-bottom: 1px solid #E4E9F0;
+  padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+.header-brand { display: flex; align-items: center; gap: 10px; }
+.header-logo {
+  width: 30px; height: 30px; background: #0B1F3A; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+}
+.header-logo-dot { width: 13px; height: 13px; border-radius: 50%; background: #60A5FA; }
+.header-title { font-size: 15px; font-weight: 700; letter-spacing: 2.5px; color: #0B1F3A; }
+.header-sub { font-size: 10px; color: #94A3B8; letter-spacing: .5px; }
+.live-badge { display: flex; align-items: center; gap: 5px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22C55E;
+  animation: livepulse 2s infinite; }
+@keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.live-text { font-size: 11px; color: #22C55E; font-weight: 600; letter-spacing: .5px; }
+
+/* ── Tabs ── */
+.tabs {
+  background: #fff; border-bottom: 1px solid #E4E9F0;
+  display: flex; padding: 0 24px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.tab-btn {
+  padding: 12px 18px; border: none; background: none;
+  font-size: 13px; font-weight: 500; color: #94A3B8;
+  border-bottom: 2px solid transparent; cursor: pointer;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: #475569; }
+.tab-btn.active { color: #0B1F3A; border-bottom-color: #0B1F3A; }
+.tab-btn.chat-highlight { color: #7C3AED; font-weight: 700; }
+.tab-btn.chat-highlight.active { border-bottom-color: #7C3AED; }
+
+/* ── Content ── */
+.content { padding: 18px 20px; }
+
+/* ── Cards ── */
+.card {
+  background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255,255,255,0.8);
+  border-radius: 16px; padding: 18px 24px;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.metric-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
+  border: 1px solid rgba(255,255,255,0.8);
+  border-radius: 14px; padding: 16px 18px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.metric-card:hover {
+  transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+.metric-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: #64748B; margin-bottom: 6px;
+  display: flex; align-items: center;
+}
+.metric-value { font-size: 20px; font-weight: 600; letter-spacing: -.5px; color: #0F172A; }
+.metric-sub { font-size: 11px; margin-top: 4px; color: #64748B; }
+
+/* ── Tooltips ── */
+.help-tip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%; background: #E2E8F0;
+  color: #64748B; font-size: 9px; font-weight: 700; margin-left: 6px;
+  cursor: help; position: relative;
+}
+.help-tip:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  background: #0B1F3A; color: #fff; padding: 8px 12px; border-radius: 6px;
+  font-size: 11px; white-space: pre-wrap; width: max-content; max-width: 240px;
+  z-index: 1000; margin-bottom: 6px; line-height: 1.4; font-weight: normal;
+  text-transform: none; letter-spacing: normal;
+}
+.pos { color: #16A34A; }
+.neg { color: #DC2626; }
+.muted { color: #94A3B8; }
+
+/* ── Ticker buttons ── */
+.ticker-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+.ticker-btn {
+  border: 1px solid #E2E8F0; background: #fff;
+  padding: 5px 13px; border-radius: 20px;
+  font-size: 12px; font-weight: 500; color: #64748B;
+  transition: all .18s;
+}
+.ticker-btn:hover:not(.active) { background: #F1F5F9; border-color: #CBD5E1; }
+.ticker-btn.active { background: #0B1F3A; color: #fff; border-color: #0B1F3A; }
+
+/* ── Signal badge ── */
+.signal-badge {
+  display: inline-flex; align-items: center;
+  padding: 4px 13px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; letter-spacing: .4px;
+}
+.s-buy  { background: #DCFCE7; color: #15803D; }
+.s-sell { background: #FEE2E2; color: #DC2626; }
+.s-hold { background: #FEF9C3; color: #B45309; }
+.s-reduce { background: #FFEDD5; color: #C2410C; }
+
+/* ── AI result box ── */
+.ai-box {
+  background: #F8FAFC; border: 1px solid #E2E8F0;
+  border-radius: 10px; padding: 14px 16px;
+  font-size: 13px; line-height: 1.8; color: #334155;
+  white-space: pre-wrap; min-height: 110px;
+}
+.ai-placeholder { color: #CBD5E1; font-style: italic; font-size: 12px; }
+.thinking { display: flex; align-items: center; gap: 5px; padding: 8px 0; }
+.thinking-dot {
+  width: 7px; height: 7px; background: #94A3B8; border-radius: 50%;
+  animation: blink 1.4s infinite ease-in-out;
+}
+.thinking-dot:nth-child(2) { animation-delay: .2s; }
+.thinking-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%,80%,100%{opacity:.3;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
+.thinking-text { font-size: 12px; color: #94A3B8; margin-left: 4px; }
+
+/* ── Buttons ── */
+.primary-btn {
+  background: #0B1F3A; color: #fff; border: none;
+  padding: 10px 20px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  width: 100%; transition: opacity .18s;
+}
+.primary-btn:hover { opacity: .85; }
+.primary-btn:disabled { opacity: .45; cursor: not-allowed; }
+.sub-tab-btn {
+  padding: 4px 11px; border-radius: 14px; border: 1px solid #E2E8F0;
+  background: #fff; color: #64748B; font-size: 11px; font-weight: 500;
+  transition: all .15s;
+}
+.sub-tab-btn.active { background: #0B1F3A; color: #fff; border-color: #0B1F3A; }
+
+/* ── Form inputs ── */
+.inp {
+  border: 1px solid #E2E8F0; border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; background: #fff;
+  width: 100%; outline: none; color: #0B1F3A;
+  transition: border-color .15s;
+}
+.inp:focus { border-color: #94A3B8; }
+.sel {
+  border: 1px solid #E2E8F0; border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; background: #fff;
+  outline: none; color: #0B1F3A; width: 100%;
+}
+.form-label { font-size: 10px; color: #94A3B8; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; display: block; }
+
+/* ── Portfolio table ── */
+.pf-table { width: 100%; border-collapse: collapse; }
+.pf-table th {
+  font-size: 10px; font-weight: 600; letter-spacing: .8px;
+  text-transform: uppercase; color: #94A3B8;
+  padding: 0 8px 10px; text-align: left; border-bottom: 1px solid #F1F5F9;
+}
+.pf-table th:not(:first-child) { text-align: right; }
+.pf-table td { padding: 10px 8px; border-bottom: 1px solid #F8FAFC; vertical-align: middle; }
+.pf-table td:not(:first-child) { text-align: right; }
+.pf-table tr:last-child td { border-bottom: none; }
+.ticker-name { font-weight: 600; font-size: 13px; }
+.ticker-sub { font-size: 10px; color: #94A3B8; }
+.remove-btn { background: none; border: none; color: #CBD5E1;
+  font-size: 14px; cursor: pointer; padding: 4px 8px;
+  border-radius: 4px; transition: color .15s; }
+.remove-btn:hover { color: #DC2626; }
+.pnl-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600;
+}
+
+/* ── Chart panels ── */
+.chart-panel { 
+  background: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.8); 
+  border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; 
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.03);
+  backdrop-filter: blur(12px);
+}
+.chart-title { font-size: 14px; font-weight: 600; color: #0F172A; margin-bottom: 6px; }
+.chart-sub { font-size: 11px; color: #64748B; margin-bottom: 14px; }
+.legend-row { display: flex; align-items: center; gap: 16px; font-size: 11px; color: #64748B; margin-top: 12px; flex-wrap: wrap; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+
+/* ── API Key panel ── */
+.api-panel {
+  background: #EFF6FF; border: 1px solid #BFDBFE;
+  border-radius: 10px; padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+/* ── GBM formula card ── */
+.formula-box {
+  background: #F8FAFC; border: 1px solid #E2E8F0;
+  border-radius: 8px; padding: 12px 16px;
+  font-size: 12px; line-height: 1.7; color: #475569;
+}
+
+/* ── Divider ── */
+.divider { border: none; border-top: 1px solid #F1F5F9; margin: 14px 0; }
+
+/* ── Footer ── */
+.footer {
+  margin-top: 20px; padding: 12px 0;
+  border-top: 1px solid #E4E9F0;
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: #CBD5E1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .content { padding: 12px 8px; }
+  .metric-grid { grid-template-columns: 1fr 1fr !important; }
+  .two-col { grid-template-columns: 1fr !important; }
+  .pf-table { font-size: 11px; }
+  .pf-table th, .pf-table td { padding: 8px 4px; }
+  .ai-box { font-size: 12px; }
+}
+
+/* ── Error banner ── */
+.error-banner {
+  background: #FEF2F2; border: 1px solid #FECACA;
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 12px; color: #DC2626; margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// Safe access to Recharts global
+const RechartsLib = window.Recharts || window.recharts;
+
+// Basic error logging to UI with more details
+window.onerror = function(msg, url, line, col, error) {
+  const root = document.getElementById('root');
+  if (root) {
+    root.innerHTML = `<div style="padding:20px;color:#ef4444;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin:20px;font-family:sans-serif;">
+      <h3 style="margin-top:0">Dashboard Error</h3>
+      <p style="font-size:14px"><strong>Message:</strong> ${msg}</p>
+      <p style="font-size:12px"><strong>Location:</strong> ${url} (${line}:${col})</p>
+      ${error ? `<pre style="font-size:11px;background:#fee2e2;padding:8px;overflow:auto">${error.stack}</pre>` : ''}
+      <div style="margin-top:10px;font-size:12px;color:#64748b;">
+        Debug: React=${typeof React}, ReactDOM=${typeof ReactDOM}, PropTypes=${typeof window.PropTypes}, Recharts=${typeof RechartsLib}
+      </div>
+      <button onclick="location.reload()" style="margin-top:15px;padding:8px 16px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;">再読み込み</button>
+    </div>`;
+  }
+  return false;
+};
+
+if (!RechartsLib || typeof RechartsLib.LineChart === 'undefined') {
+  console.warn("Recharts library incomplete or failed to load. Using fallback components.");
+}
+</script>
+
+<script type="text/babel">
+
+const { useState, useEffect, useCallback } = React;
+const {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  ReferenceLine, CartesianGrid, ComposedChart, Bar, BarChart,
+  AreaChart, Area, PieChart, Pie, Cell
+} = RechartsLib || {};
+
+/* ════════════════════════════════════════════════════════
+   CONFIG — バックエンドURL
+   ════════════════════════════════════════════════════════ */
+// 本番: Hugging Face Space を常に使用
+// ローカル開発時は http://localhost:8000 を使用
+const HF_BACKEND = "https://gyongery-lunaron-investment.hf.space";
+const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const API_BASE = localStorage.getItem("LUNARON_API_BASE") || (IS_LOCAL ? "http://localhost:8000" : HF_BACKEND);
+
+const setApiBase = (url) => { 
+  let formattedUrl = url.trim().replace(/\/$/, ""); 
+  if (formattedUrl && !formattedUrl.startsWith("http")) formattedUrl = "https://" + formattedUrl;
+  localStorage.setItem("LUNARON_API_BASE", formattedUrl); 
+  location.reload(); 
+};
+
+/* ── Ticker 定義（バックエンドが落ちている場合のフォールバック用） ── */
+const FALLBACK_TICKERS = [
+  { id: "GLD",  name: "金 (ゴールド)", col: "#F59E0B", base: 210, seed: 101 },
+  { id: "QQQ",  name: "テクノロジー (QQQ)", col: "#3B82F6", base: 440, seed: 102 },
+  { id: "SQQQ", name: "逆回転 (ベア)", col: "#EF4444", base: 12,  seed: 103 },
+  { id: "TQQQ", name: "米国10倍 (ブル)", col: "#10B981", base: 60,  seed: 104 },
+  { id: "VOO",  name: "スタンダード (S&P500)", col: "#6366F1", base: 470, seed: 105 },
+];
+const TICKER_MAP = Object.fromEntries(FALLBACK_TICKERS.map(t => [t.id, t]));
+const PIE_COLORS = ["#1D4ED8","#7C3AED","#F59E0B","#10B981","#EF4444","#6366F1","#B45309","#8B5CF6"];
+
+/* ── フォールバック: ブラウザ内でインジケーター計算 ── */
+function seededRand(seed) {
+  let s = seed;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000; };
+}
+function calcEMAjs(arr, n) {
+  const k = 2 / (n + 1); const out = [arr[0]];
+  for (let i = 1; i < arr.length; i++) out.push(arr[i] * k + out[i-1] * (1-k));
+  return out;
+}
+function calcRSIjs(arr, n=14) {
+  const chg = arr.slice(1).map((v,i)=>v-arr[i]);
+  const out = new Array(n).fill(null);
+  let ag = chg.slice(0,n).filter(c=>c>0).reduce((a,b)=>a+b,0)/n;
+  let al = chg.slice(0,n).filter(c=>c<0).reduce((a,b)=>a-b,0)/n;
+  for (let i=n; i<chg.length; i++) {
+    const g=Math.max(chg[i],0), l=Math.max(-chg[i],0);
+    ag=(ag*(n-1)+g)/n; al=(al*(n-1)+l)/n;
+    out.push(al===0?100:100-100/(1+ag/al));
+  }
+  return out;
+}
+function calcMACDjs(arr) {
+  const e12=calcEMAjs(arr,12), e26=calcEMAjs(arr,26);
+  const line=arr.map((_,i)=>e12[i]-e26[i]);
+  const sig=calcEMAjs(line,9);
+  return { line, sig, hist:line.map((m,i)=>m-sig[i]) };
+}
+function calcBBjs(arr, n=20) {
+  const up=[],mid=[],lo=[];
+  for (let i=0; i<arr.length; i++) {
+    if (i<n-1){up.push(null);mid.push(null);lo.push(null);continue;}
+    const sl=arr.slice(i-n+1,i+1);
+    const m=sl.reduce((a,b)=>a+b,0)/n;
+    const sd=Math.sqrt(sl.reduce((a,b)=>a+(b-m)**2,0)/n);
+    up.push(m+2*sd); mid.push(m); lo.push(m-2*sd);
+  }
+  return { up, mid, lo };
+}
+function calcSharpeJs(prices, rf=0.045) {
+  const ret = prices.slice(1).map((v,i)=>(v-prices[i])/prices[i]);
+  const ar = ret.reduce((a,b)=>a+b,0)/ret.length*252;
+  const av = Math.sqrt(ret.reduce((a,b)=>a+(b-ar/252)**2,0)/ret.length)*Math.sqrt(252);
+  return av===0 ? 0 : (ar-rf)/av;
+}
+function gbmJs(prices, simCount=300, days=7) {
+  const lr = prices.slice(1).map((v,i)=>Math.log(v/prices[i]));
+  const mu = lr.reduce((a,b)=>a+b,0)/lr.length;
+  const variance = lr.reduce((a,b)=>a+(b-mu)**2,0)/lr.length;
+  const sigma = Math.sqrt(variance);
+  const S0 = prices[prices.length-1]; const dt = 1/252;
+  const r = seededRand(42);
+  const paths = [];
+  for (let s=0; s<simCount; s++) {
+    let p=S0; const path=[p];
+    for (let d=0; d<days; d++) {
+      const z=(r()+r()+r()+r()+r()+r()-3)*Math.sqrt(2);
+      p = p*Math.exp((mu-0.5*variance)*dt+sigma*Math.sqrt(dt)*z);
+      path.push(p);
+    }
+    paths.push(path);
+  }
+  const result=[];
+  for (let d=0; d<=days; d++) {
+    const vals=paths.map(p=>p[d]).sort((a,b)=>a-b);
+    const n=vals.length;
+    result.push({
+      day: d===0?"現在":`+${d}日`,
+      p10:vals[Math.floor(n*.10)], p25:vals[Math.floor(n*.25)],
+      p50:vals[Math.floor(n*.50)], p75:vals[Math.floor(n*.75)],
+      p90:vals[Math.floor(n*.90)],
+    });
+  }
+  return { forecast:result, annual_volatility:sigma*Math.sqrt(252), annual_drift:mu*252 };
+}
+function genFallbackData(base, seed, days=120) {
+  const r=seededRand(seed || 42); const d=[]; let p=base || 200;
+  for (let i=0; i<days; i++) {
+    const dt=new Date(); dt.setDate(dt.getDate()-(days-i));
+    p=Math.max(p+(r()-0.478)*base*0.022, base*0.6);
+    d.push({ date:`${dt.getMonth()+1}/${dt.getDate()}`, close:p });
+  }
+  return d;
+}
+function buildChartData(ticker) {
+  const raw = genFallbackData(ticker.base, ticker.seed);
+  const closes = raw.map(d=>d.close);
+  const rsiArr = calcRSIjs(closes);
+  const {line:ml, sig:ms, hist:mh} = calcMACDjs(closes);
+  const {up,mid,lo} = calcBBjs(closes);
+  const sharpe = calcSharpeJs(closes);
+  const gbm = gbmJs(closes);
+  const chartData = raw.map((d,i)=>({
+    date:d.date, close:+d.close.toFixed(2),
+    rsi:rsiArr[i]!=null?+rsiArr[i].toFixed(1):null,
+    macd:+ml[i].toFixed(4), macdSig:+ms[i].toFixed(4), hist:+mh[i].toFixed(4),
+    upper:up[i]!=null?+up[i].toFixed(2):null,
+    middle:mid[i]!=null?+mid[i].toFixed(2):null,
+    lower:lo[i]!=null?+lo[i].toFixed(2):null,
+  }));
+  const latest=chartData[chartData.length-1];
+  const prev=chartData[chartData.length-2];
+  let chg = 0;
+  if (latest && prev && prev.close !== 0) {
+    chg = ((latest.close - prev.close) / prev.close * 100).toFixed(2);
+  }
+  let score=0;
+  const rv=latest.rsi;
+  if(rv<30)score+=2; else if(rv<45)score+=1; else if(rv>70)score-=2; else if(rv>60)score-=1;
+  if(latest.hist>0)score+=1; else score-=1;
+  if(latest.close<(latest.lower||0)*1.02)score+=1;
+  if(latest.close>(latest.upper||0)*0.98)score-=1;
+  const signal = score>=2?"BUY":score<=-2?"SELL":"HOLD";
+  return { chartData, latest, change_pct:+chg, sharpe:+sharpe.toFixed(3), signal, gbm, color:ticker.col };
+}
+
+/* ── Format helpers ── */
+function fmtPrice(v, tickerId) {
+  if (v == null || isNaN(v)) return "---";
+  if (tickerId==="BTC"||tickerId==="ETH") return "$"+v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+  if (v>10000) return "$"+v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+  return "$"+v.toFixed(2);
+}
+function fmtYen(v) { return "¥"+Math.round(v).toLocaleString(); }
+
+/* ════════════════════════════════════════════════════════
+   メインコンポーネント
+   ════════════════════════════════════════════════════════ */
+function App() {
+  const [tab, setTab] = useState("chart");
+  const [tickers, setTickers] = useState(FALLBACK_TICKERS);
+  const [tick, setTick] = useState(FALLBACK_TICKERS[0]);
+  const [backendOk, setBackendOk] = useState(false);
+  const [chartSub, setChartSub] = useState("RSI");
+  const [indicatorData, setIndicatorData] = useState(null);
+  const [indicatorLoading, setIndicatorLoading] = useState(false);
+  const [analysis, setAnalysis] = useState("");
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [signal, setSignal] = useState(null);
+  const [pfAnalysis, setPfAnalysis] = useState("");
+  const [pfLoading, setPfLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [holdings, setHoldings] = useState([]);
+  const [newTicker, setNewTicker] = useState("GLD");
+  const [newQty, setNewQty] = useState("");
+  const [newBuy, setNewBuy] = useState("");
+  const [newCat, setNewCat] = useState("PayPay");
+  const [aiQuery, setAiQuery] = useState("");
+  const [filterCat, setFilterCat] = useState("すべて");
+  const [usdjpy, setUsdjpy] = useState(150);
+  const [isSimpleMode, setIsSimpleMode] = useState(true);
+  const [yenInvested, setYenInvested] = useState("");
+  const [yenCurrent, setYenCurrent] = useState("");
+  const [ollamaStatus, setOllamaStatus] = useState({ ollama_running: false, gemma3_ready: false, message: "確認中..." });
+  
+  /* チャット機能の状態 */
+  const [chatHistory, setChatHistory] = useState([
+    { role: "assistant", content: "こんにちは！投資アドバイザーのLunaron AIです。投資の基礎知識やNISAの活用方法、リスク管理など、何でも気軽に聞いてくださいね。" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+
+  /* バックエンド疎通確認 */
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/health`);
+        if (r.ok) {
+          const data = await r.json();
+          setBackendOk(true);
+          if (data.usdjpy) setUsdjpy(data.usdjpy);
+          fetchTickers();
+          // AIの状態も確認
+          const ar = await fetch(`${API_BASE}/api/ollama/status`);
+          const ad = await ar.json();
+          setOllamaStatus(ad);
+        } else {
+          setBackendOk(false);
+        }
+      } catch {
+        setBackendOk(false);
+      }
+    };
+    checkStatus();
+    const timer = setInterval(checkStatus, 30000); // 30秒ごとに更新
+    return () => clearInterval(timer);
+  }, []);
+
+  const fetchTickers = async () => {
+    try {
+      const r = await fetch(`${API_BASE}/api/tickers`);
+      const data = await r.json();
+      if (data.tickers) setTickers(data.tickers);
+    } catch {}
+  };
+
+  /* インジケーターデータ取得 */
+  const fetchIndicators = useCallback(async (t) => {
+    setIndicatorLoading(true); setApiError("");
+    if (backendOk) {
+      try {
+        const r = await fetch(`${API_BASE}/api/indicators/${t.id}`);
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        setIndicatorData(data);
+        setIndicatorLoading(false);
+        return;
+      } catch (e) { setApiError("バックエンドエラー。フォールバックデータを使用中。"); }
+    }
+    // フォールバック
+    setIndicatorData(buildChartData(t));
+    setIndicatorLoading(false);
+  }, [backendOk]);
+
+  useEffect(() => {
+    setIndicatorData(null); // 切り替え時に一旦クリア
+    fetchIndicators(tick);
+    setAnalysis(""); setSignal(null);
+  }, [tick, fetchIndicators]);
+
+  /* AI分析実行 */
+  const runAnalysis = async () => {
+    setAnalysisLoading(true); setAnalysis(""); setApiError("");
+    if (backendOk) {
+      try {
+        const r = await fetch(`${API_BASE}/api/analyze`, {
+          method: "POST", headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({ ticker_id: tick.id, query: aiQuery })
+        });
+        const data = await r.json();
+        if (data.analysis) {
+          setSignal(data.signal); 
+          setAnalysis(data.analysis);
+          setAnalysisLoading(false); 
+          setAiQuery(""); 
+          return;
+        }
+      } catch (e) { console.error(e); }
+    }
+    const msg = ollamaStatus.ollama_running 
+      ? (ollamaStatus.gemma3_ready ? "AI分析に失敗しました。時間をおいて再度お試しください。" : "AIモデル(Gemma3)を準備中です。`ollama pull gemma3` を実行してください。")
+      : "AI(Ollama)が起動していません。ターミナルで `ollama serve` を実行してください。";
+    setAnalysis(msg);
+    setAnalysisLoading(false);
+  };
+
+  /* AIチャット実行 */
+  const runChat = async () => {
+    if (!chatInput.trim() || chatLoading) return;
+    const userMsg = chatInput.trim();
+    setChatInput("");
+    setChatLoading(true);
+    
+    const newHistory = [...chatHistory, { role: "user", content: userMsg }];
+    setChatHistory(newHistory);
+
+    if (backendOk) {
+      try {
+        const r = await fetch(`${API_BASE}/api/chat`, {
+          method: "POST", headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({ message: userMsg, history: chatHistory })
+        });
+        const data = await r.json();
+        if (data.response) {
+          setChatHistory(prev => [...prev, { role: "assistant", content: data.response }]);
+          setChatLoading(false);
+          return;
+        }
+      } catch (e) { console.error(e); }
+    }
+    
+    // バックエンド未接続時の簡易的な自動応答（デモ用）
+    setTimeout(() => {
+      setChatHistory(prev => [...prev, { role: "assistant", content: "現在AIサーバーとの接続が不安定なようです。投資の基本原則（長期・分散・積立）を守ることで、多くのリスクを軽減できますよ。具体的な銘柄分析は「チャート分析」タブから行えます。" }]);
+      setChatLoading(false);
+    }, 1000);
+  };
+
+  /* ポートフォリオ診断 */
+  const runPfAnalysis = async () => {
+    if (!holdings.length) return;
+    setPfLoading(true); setPfAnalysis(""); setApiError("");
+    const payload = holdings.map(h=>({
+      ticker:h.ticker, name:h.name,
+      qty:parseFloat(h.qty)||0,
+      buy_price:parseFloat(h.buyPrice)||0,
+    }));
+    if (backendOk) {
+      try {
+        const r = await fetch(`${API_BASE}/api/portfolio/analyze`, {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({ holdings: payload })
+        });
+        const data = await r.json();
+        if (data.analysis) {
+          setPfAnalysis(data.analysis); 
+          setPfLoading(false); 
+          return;
+        }
+      } catch { }
+    }
+    const msg = ollamaStatus.ollama_running 
+      ? "ポートフォリオ分析に失敗しました。AIモデルが準備できているか確認してください。"
+      : "AI(Ollama)が起動していません。`ollama serve` を実行してください。";
+    setPfAnalysis(msg);
+    setPfLoading(false);
+  };
+
+  const addHolding = () => {
+    const t = TICKER_MAP[newTicker];
+    if (!t) return;
+    
+    let qty, buyPrice;
+    
+    if (isSimpleMode) {
+      // かんたん入力モード (円単位)
+      if (!yenInvested) return;
+      const invYen = parseFloat(yenInvested);
+      const curYen = parseFloat(yenCurrent) || invYen;
+      
+      // バックエンドから取得した現在のドル価格 (デモの場合はbuildChartDataから取得)
+      const currentPriceUSD = (indicatorData && indicatorData.ticker_id === newTicker) 
+        ? indicatorData.latest.close 
+        : buildChartData(t).latest.close;
+        
+      // 数量 = 現在の評価額(円) / (現在の株価(ドル) * ドル円)
+      qty = curYen / (currentPriceUSD * usdjpy);
+      // 取得単価 = 投資額(円) / (数量 * ドル円)
+      buyPrice = invYen / (qty * usdjpy);
+    } else {
+      // 通常入力モード
+      if (!newQty || !newBuy) return;
+      qty = parseFloat(newQty);
+      buyPrice = parseFloat(newBuy);
+    }
+
+    setHoldings(h => [...h, { 
+      id:Date.now(), 
+      ticker:newTicker, 
+      name:t.name, 
+      qty:qty, 
+      buyPrice:buyPrice,
+      cat:newCat 
+    }]);
+    setNewQty(""); setNewBuy(""); setYenInvested(""); setYenCurrent("");
+  };
+  const removeHolding = id => setHoldings(h => h.filter(x => x.id !== id));
+
+  /* ポートフォリオ計算 */
+  const pfData = holdings.map(h => {
+    const t = TICKER_MAP[h.ticker];
+    if (!t) return { ...h, currentPrice:+h.buyPrice, pnl:0, pnlPct:0, currentVal:0, totalCost:0, col:"#94A3B8" };
+    const raw = genFallbackData(t.base, t.seed);
+    const cur = raw[raw.length-1].close;
+    const qty = parseFloat(h.qty)||0, buy = parseFloat(h.buyPrice)||cur;
+    const totalCost = qty*buy, currentVal = qty*cur;
+    const pnl = currentVal-totalCost, pnlPct = totalCost>0?(pnl/totalCost)*100:0;
+    return { ...h, currentPrice:cur, pnl, pnlPct, currentVal, totalCost, col:t.col };
+  });
+  const totalCost = pfData.reduce((a,b)=>a+b.totalCost,0);
+  const totalVal  = pfData.reduce((a,b)=>a+b.currentVal,0);
+  const totalPnl  = totalVal - totalCost;
+  const totalPnlPct = totalCost>0?(totalPnl/totalCost)*100:0;
+
+  /* Chart helpers */
+  const d = indicatorData;
+  const recent = (d && d.chartData) ? d.chartData.slice(-30) : [];
+  const latest = d ? d.latest : null;
+  const gbm = d ? d.gbm : null;
+  const priceMin = recent.length ? Math.min(...recent.map(x=>(x.lower||x.close)))*0.997 : 0;
+  const priceMax = recent.length ? Math.max(...recent.map(x=>(x.upper||x.close)))*1.003 : 100;
+
+  const CustomTT = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div style={{background:"#fff",border:"1px solid #E2E8F0",borderRadius:8,padding:"8px 12px",fontSize:11}}>
+        <div style={{color:"#94A3B8",marginBottom:3}}>{label}</div>
+        {payload.map((p,i) => p.value != null && (
+          <div key={i} style={{color:p.color||"#0B1F3A",fontWeight:500}}>
+            {p.name}: {typeof p.value==="number" ? p.value.toFixed(2) : p.value}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const col = tick.col || "#1D4ED8";
+
+  /* ════════ RENDER ════════ */
+  return (
+    <div className="app-wrapper">
+
+      {/* ── Header ── */}
+      <header className="header">
+        <div className="header-brand">
+          <div className="header-logo"><div className="header-logo-dot"/></div>
+          <div>
+            <div className="header-title">LUNARON</div>
+            <div className="header-sub">Investment Dashboard v3.5 <span style={{color:"#7C3AED", fontWeight:700}}>(AI Chat Enabled)</span></div>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:20}}>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:10,color:"#94A3B8"}}>System Status</div>
+            <div style={{display:"flex",gap:12,marginTop:2}}>
+              <div style={{fontSize:11,color:backendOk?"#16A34A":"#F59E0B"}}>
+                {backendOk ? "● API Online" : "○ Offline"}
+              </div>
+              <div style={{fontSize:11,color:ollamaStatus.gemma3_ready?"#16A34A":"#F59E0B"}}>
+                {ollamaStatus.ollama_running ? (ollamaStatus.gemma3_ready ? "● AI Ready" : "▲ AI Loading") : "○ AI Offline"}
+              </div>
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <button onClick={() => {
+              const suggested = "https://gyong7288-ui-lunaron-investment.hf.space";
+              const url = prompt(`APIベースURLを入力してください:\n(推奨: ${suggested})`, API_BASE || suggested);
+              if (url) setApiBase(url);
+            }} style={{background:"none",border:"none",cursor:"pointer",color:backendOk?"#94A3B8":"#F59E0B",fontSize:14,animation:backendOk?"none":"pulse 2s infinite"}}>⚙️</button>
+            <div className="live-badge">
+              <div className="live-dot"/><span className="live-text">LIVE</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Tabs ── */}
+      <nav className="tabs">
+        {[
+          ["chart","◈ チャート分析"],
+          ["chat","✨ AI投資相談"],
+          ["portfolio","◉ ポートフォリオ"],
+          ["forecast","◎ GBM予測"],
+          ["learn","📚 投資基礎"]
+        ].map(([k,l])=>(
+          <button key={k} className={`tab-btn ${tab===k?"active":""} ${k==="chat"?"chat-highlight":""}`} 
+            onClick={()=>{ console.log("Switching to", k); setTab(k); }}>{l}</button>
+        ))}
+      </nav>
+
+      <div className="content">
+        {apiError && <div className="error-banner">⚠ {apiError}</div>}
+        {!backendOk && window.location.protocol === "https:" && API_BASE.startsWith("http://") && (
+          <div className="error-banner" style={{background:"#FFFBEB",borderColor:"#F59E0B",color:"#B45309"}}>
+            <strong>⚠ セキュリティによる接続ブロック</strong><br/>
+            HTTPS（Cloudflare）からローカル（HTTP）への通信がブラウザで禁止されています。<br/>
+            右上の⚙️設定から、<strong>Hugging FaceのURL（https://...）</strong>を入力するか、ローカル環境（localhost:8000）で直接開いてください。
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════
+            TAB: チャート分析
+            ══════════════════════════════════════════ */}
+        {tab==="chart" && <>
+          <div className="ticker-row">
+            {tickers.map(t => (
+              <button key={t.id} className={`ticker-btn ${tick.id===t.id?"active":""}`}
+                onClick={()=>setTick(t)}>
+                <strong>{t.id}</strong>&nbsp;
+                <span style={{opacity:.7,fontSize:10}}>{t.name}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Expert Insights ── */}
+          <div className="card" style={{background:"linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",borderLeft:"4px solid #0B1F3A",marginBottom:15}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+              <div>
+                <div className="metric-label" style={{color:"#0B1F3A",fontWeight:700}}>専門家による市場診断</div>
+                <div style={{fontSize:10,color:"#64748B",marginTop:2}}>歴史的データと市場心理に基づく客観的評価</div>
+              </div>
+              <div className={`pnl-tag ${indicatorData?.expert?.fg_val<30?"s-buy":indicatorData?.expert?.fg_val>70?"s-sell":"s-hold"}`}>
+                {indicatorData?.expert?.fg_label || "Neutral"}
+              </div>
+            </div>
+
+            <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+              <div className="metric-card" style={{background:"#fff",padding:10}}>
+                <div className="metric-label">
+                  心理指数 (F&G)
+                  <span className="help-tip" data-tip="市場の心理状態を0(極度の恐怖)〜100(極度の強欲)で表します。&#10;「恐怖」の時ほど割安で買うチャンスです。">?</span>
+                </div>
+                <div style={{fontSize:16,fontWeight:700,color:"#0B1F3A"}}>{indicatorData?.expert?.fg_val || 50}</div>
+                <div style={{fontSize:9,color:"#94A3B8"}}>0(恐怖) ↔ 100(強欲)</div>
+              </div>
+              <div className="metric-card" style={{background:"#fff",padding:10}}>
+                <div className="metric-label">
+                  シラーPER (CAPE)
+                  <span className="help-tip" data-tip="過去10年間の利益から計算した株価の割安度です。&#10;この数値が高いと「バブル気味（過熱）」、低いと「お買い得（割安）」と判断できます。">?</span>
+                </div>
+                <div style={{fontSize:16,fontWeight:700,color:"#0B1F3A"}}>
+                  {indicatorData?.expert?.cape || "—"}
+                  <span style={{fontSize:10,marginLeft:4,fontWeight:500,color:indicatorData?.expert?.cape_status==="割安"?"#16A34A":indicatorData?.expert?.cape_status==="過熱"?"#DC2626":"#64748B"}}>
+                    ({indicatorData?.expert?.cape_status || "—"})
+                  </span>
+                </div>
+                <div style={{fontSize:9,color:"#94A3B8"}}>歴史的バリュエーション</div>
+              </div>
+              <div className="metric-card" style={{background:"#fff",padding:10}}>
+                <div className="metric-label">現在の立ち回り</div>
+                <div style={{fontSize:11,fontWeight:600,color:"#0B1F3A",lineHeight:1.2,marginTop:2,minHeight:30}}>
+                  {indicatorData?.expert?.tip || "航路を守りましょう。"}
+                </div>
+              </div>
+            </div>
+
+            {/* AI備考欄 */}
+            <div style={{marginTop:12,paddingTop:10,borderTop:"1px dashed #E2E8F0"}}>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <div style={{fontSize:9,background:"#0B1F3A",color:"#fff",padding:"2px 6px",borderRadius:4,fontWeight:700}}>AI備考</div>
+                <div style={{fontSize:11,color:"#475569",fontWeight:500}}>
+                  {indicatorData?.expert?.memo || "データを分析中..."}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Metric cards */}
+          <div className="metric-grid" style={{gridTemplateColumns:"repeat(5,1fr)"}}>
+            {[
+              ["価格", latest?fmtPrice(latest.close,tick.id):"—",
+               d&&<span className={d.change_pct>=0?"pos":"neg"}>{d.change_pct>=0?"▲":"▼"}{Math.abs(d.change_pct)}%</span>],
+              ["RSI(14)", latest?.rsi?.toFixed(1)??"—",
+               <span className="muted" style={{fontSize:10}}>{!latest?.rsi?"":latest.rsi>70?"過熱":latest.rsi<30?"割安":"中立"}</span>],
+              ["MACD", latest?.hist?.toFixed(3)??"—",
+               <span style={{fontSize:10,color:latest?.hist>0?"#16A34A":"#DC2626"}}>{latest?.hist>0?"強気↗":"弱気↘"}</span>],
+              ["シャープ", d?.sharpe?.toFixed(2)??"—",
+               <span className="muted" style={{fontSize:10}}>{!d?.sharpe?"":d.sharpe>1?"優秀":d.sharpe>0?"普通":"要注意"}</span>],
+              ["7日予測(中央値)", gbm?fmtPrice(gbm.forecast[gbm.forecast.length-1].p50,tick.id):"—",
+               <span className="muted" style={{fontSize:10}}>GBMモデル</span>],
+            ].map(([l,v,s],i)=>(
+              <div key={i} className="metric-card">
+                <div className="metric-label">{l}</div>
+                <div className="metric-value" style={{fontSize:16,color:i===0?col:"#0B1F3A"}}>{v}</div>
+                <div className="metric-sub">{s}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Price chart */}
+          <div className="chart-panel">
+            <div className="chart-title">{tick.name} — 価格 + ボリンジャーバンド（直近30日）</div>
+            {indicatorLoading ? <div style={{textAlign:"center",padding:"40px 0",color:"#94A3B8",fontSize:12}}>データ取得中...</div> : (
+              <ResponsiveContainer width="100%" height={200}>
+                <ComposedChart data={recent} margin={{top:4,right:4,bottom:0,left:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false}/>
+                  <XAxis dataKey="date" tick={{fontSize:9,fill:"#94A3B8"}} tickLine={false} axisLine={false} interval={4}/>
+                  <YAxis domain={[priceMin,priceMax]} tick={{fontSize:9,fill:"#94A3B8"}} tickLine={false} axisLine={false}
+                    tickFormatter={v=>tick.id==="BTC"||tick.id==="ETH"?"$"+(v/1000).toFixed(0)+"k":"$"+v.toFixed(0)} width={52}/>
+                  <Tooltip content={<CustomTT/>}/>
+                  <Area dataKey="upper" stroke="none" fill="#EFF6FF" fillOpacity={1} dot={false} legendType="none"/>
+                  <Area dataKey="lower" stroke="none" fill="#fff" fillOpacity={1} dot={false} legendType="none"/>
+                  <Line type="monotone" dataKey="upper"  stroke="#BFDBFE" strokeWidth={1} dot={false} name="BB上限"/>
+                  <Line type="monotone" dataKey="middle" stroke="#CBD5E1" strokeWidth={1} dot={false} strokeDasharray="4 2" name="MA20"/>
+                  <Line type="monotone" dataKey="lower"  stroke="#BFDBFE" strokeWidth={1} dot={false} name="BB下限"/>
+                  <Line type="monotone" dataKey="sma50"  stroke="#F59E0B" strokeWidth={1.5} dot={false} strokeDasharray="3 3" name="SMA50"/>
+                  <Line type="monotone" dataKey="sma200" stroke="#EF4444" strokeWidth={1.5} dot={false} strokeDasharray="5 5" name="SMA200"/>
+                  <Line type="monotone" dataKey="close"  stroke={col} strokeWidth={2.5} dot={false} name="終値"/>
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+            <div className="legend-row">
+              <span><span className="legend-dot" style={{background:col}}/>終値</span>
+              <span style={{display:"flex", alignItems:"center"}}>
+                <span className="legend-dot" style={{background:"#BFDBFE"}}/>ボリンジャー (±2σ)
+              </span>
+              <span style={{display:"flex", alignItems:"center"}}>
+                <span className="legend-dot" style={{background:"#F59E0B"}}/>SMA50
+                <span className="help-tip" data-tip="過去50日間の平均価格（中期トレンド）。この線より上なら上昇傾向。">?</span>
+              </span>
+              <span style={{display:"flex", alignItems:"center"}}>
+                <span className="legend-dot" style={{background:"#EF4444"}}/>SMA200
+                <span className="help-tip" data-tip="過去200日間の平均価格（長期トレンド）。大局的な強気/弱気相場の判断に使います。">?</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Sub chart + AI panel */}
+          <div className="two-col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div>
+              <div style={{display:"flex",gap:6,marginBottom:8}}>
+                {["RSI","MACD"].map(c=>(
+                  <button key={c} className={`sub-tab-btn ${chartSub===c?"active":""}`} onClick={()=>setChartSub(c)}>{c}</button>
+                ))}
+              </div>
+
+              {chartSub==="RSI" && (
+                <div className="chart-panel" style={{padding:"12px 16px"}}>
+                  <div style={{fontSize:11,color:"#64748B",fontWeight:500,marginBottom:6}}>RSI (14) — 相対力指数</div>
+                  <ResponsiveContainer width="100%" height={130}>
+                    <LineChart data={recent.filter(d=>d.rsi!=null)} margin={{top:4,right:4,bottom:0,left:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false}/>
+                      <XAxis dataKey="date" tick={{fontSize:8,fill:"#94A3B8"}} tickLine={false} axisLine={false} interval={5}/>
+                      <YAxis domain={[0,100]} tick={{fontSize:8,fill:"#94A3B8"}} tickLine={false} axisLine={false} width={24}/>
+                      <Tooltip content={<CustomTT/>}/>
+                      <ReferenceLine y={70} stroke="#FCA5A5" strokeDasharray="3 2"/>
+                      <ReferenceLine y={30} stroke="#86EFAC" strokeDasharray="3 2"/>
+                      <Line type="monotone" dataKey="rsi" stroke="#7C3AED" strokeWidth={2} dot={false} name="RSI"/>
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#94A3B8",marginTop:6}}>
+                    <span style={{color:"#86EFAC"}}>▼ 30: 割安（買い検討）</span>
+                    <span style={{color:"#FCA5A5"}}>▲ 70: 過熱（売り検討）</span>
+                  </div>
+                </div>
+              )}
+
+              {chartSub==="MACD" && (
+                <div className="chart-panel" style={{padding:"12px 16px"}}>
+                  <div style={{fontSize:11,color:"#64748B",fontWeight:500,marginBottom:6}}>MACD — トレンド転換指標</div>
+                  <ResponsiveContainer width="100%" height={130}>
+                    <ComposedChart data={recent} margin={{top:4,right:4,bottom:0,left:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false}/>
+                      <XAxis dataKey="date" tick={{fontSize:8,fill:"#94A3B8"}} tickLine={false} axisLine={false} interval={5}/>
+                      <YAxis tick={{fontSize:8,fill:"#94A3B8"}} tickLine={false} axisLine={false} width={32} tickFormatter={v=>v.toFixed(1)}/>
+                      <Tooltip content={<CustomTT/>}/>
+                      <ReferenceLine y={0} stroke="#E2E8F0"/>
+                      <Bar dataKey="hist" fill="#93C5FD" name="ヒスト" radius={[2,2,0,0]}/>
+                      <Line type="monotone" dataKey="macd"    stroke="#1D4ED8" strokeWidth={1.5} dot={false} name="MACD"/>
+                      <Line type="monotone" dataKey="macdSig" stroke="#F97316" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name="Signal"/>
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                  <div className="legend-row" style={{marginTop:6}}>
+                    <span><span className="legend-dot" style={{background:"#1D4ED8"}}/>MACD</span>
+                    <span><span className="legend-dot" style={{background:"#F97316"}}/>Signal</span>
+                    <span><span className="legend-dot" style={{background:"#93C5FD"}}/>Histogram</span>
+                  </div>
+                </div>
+              )}
+
+              {/* BB state */}
+              <div className="card" style={{marginTop:10,padding:"14px 16px"}}>
+                <div className="metric-label" style={{marginBottom:8}}>
+                  ボリンジャーバンド現在値
+                  <span className="help-tip" data-tip="価格の約95%が収まる「帯」です。上のバンドに触れると割高、下のバンドに触れると割安と判断されます。">?</span>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                  {[["上限",latest?.upper,"#DBEAFE","#1D4ED8"],["中心",latest?.middle,"#F1F5F9","#475569"],["下限",latest?.lower,"#DCFCE7","#16A34A"]].map(([l,v,bg,c])=>(
+                    <div key={l} style={{background:bg,borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                      <div style={{fontSize:9,color:c,fontWeight:600,marginBottom:2}}>{l}</div>
+                      <div style={{fontSize:11,fontWeight:600,color:c}}>{v?fmtPrice(v,tick.id):"—"}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* AI analysis card */}
+            <div className="card" style={{display:"flex",flexDirection:"column",gap:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#0F172A"}}>Lunaron AI 分析</div>
+                  <div style={{fontSize:11,color:"#64748B",marginTop:2}}>{tick.name}</div>
+                </div>
+              </div>
+
+              {/* Trend Gauge */}
+              {signal && (
+                <div style={{margin:"8px 0"}}>
+                  <div style={{display:"flex", justifyContent:"space-between", fontSize:10, color:"#64748B", fontWeight:600, marginBottom:4}}>
+                    <span>弱気 (SELL)</span>
+                    <span>中立 (HOLD)</span>
+                    <span>強気 (BUY)</span>
+                  </div>
+                  <div style={{height:10, background:"linear-gradient(90deg, #EF4444 0%, #F59E0B 50%, #10B981 100%)", borderRadius:10, position:"relative"}}>
+                    <div style={{
+                      position:"absolute", top:-3, width:16, height:16, borderRadius:"50%", background:"#fff", border:"3px solid #0F172A",
+                      left: signal==="BUY" ? "85%" : signal==="SELL" ? "15%" : "50%", transform:"translateX(-50%)", transition:"left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      boxShadow:"0 2px 4px rgba(0,0,0,0.2)"
+                    }}></div>
+                  </div>
+                </div>
+              )}
+
+              <div className="ai-box" style={{flex:1, padding: analysis ? "0" : "12px", background: analysis ? "transparent" : "#F8FAFC", border: analysis ? "none" : "1px solid #E2E8F0"}}>
+                {analysisLoading
+                  ? <div className="thinking"><div className="thinking-dot"/><div className="thinking-dot"/><div className="thinking-dot"/><span className="thinking-text">分析中...</span></div>
+                  : analysis
+                    ? (
+                        <div style={{display:"flex", flexDirection:"column", gap:8}}>
+                          {analysis.split("### ").filter(b => b.trim()).map((block, i) => {
+                            if (!block.includes("【")) return <span key={i}>{block}</span>;
+                            const parts = block.split('\n');
+                            const title = parts[0].trim();
+                            const content = parts.slice(1).join('\n').trim();
+                            let icon = "💬", color = "#1D4ED8", bg = "#EFF6FF";
+                            if (title.includes("結論")) { icon = "🎯"; color = "#16A34A"; bg = "#DCFCE7"; }
+                            else if (title.includes("根拠")) { icon = "📊"; color = "#0B1F3A"; bg = "#F1F5F9"; }
+                            else if (title.includes("リスク")) { icon = "⚠️"; color = "#DC2626"; bg = "#FEE2E2"; }
+                            else if (title.includes("アクションプラン")) { icon = "🚀"; color = "#7C3AED"; bg = "#F5F3FF"; }
+                            
+                            return (
+                              <div key={i} style={{padding:"10px 12px", background:bg, borderRadius:8, borderLeft:`3px solid ${color}`}}>
+                                <div style={{fontWeight:600, fontSize:12, color:color, marginBottom:4, display:"flex", alignItems:"center", gap:6}}>
+                                  <span>{icon}</span> {title}
+                                </div>
+                                <div style={{fontSize:11, color:"#334155", whiteSpace:"pre-wrap", lineHeight:1.5}}>{content}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )
+                    : <span className="ai-placeholder">
+                        指標に基づいた分析を行います。個別の質問がある場合は下に入力してください。
+                      </span>
+                }
+              </div>
+              <textarea className="inp" style={{minHeight:60,fontSize:12,resize:"vertical"}}
+                placeholder="例: この銘柄の売り時はいつ？ 10倍になる可能性はある？"
+                value={aiQuery} onChange={e=>setAiQuery(e.target.value)}
+                disabled={analysisLoading}/>
+              <button className="primary-btn" onClick={runAnalysis} disabled={analysisLoading}>
+                {analysisLoading ? "分析中..." : "◆ 指標からAI分析を実行"}
+              </button>
+
+              <hr className="divider" style={{margin:"15px 0"}}/>
+              
+              {/* 直接対話チャット欄 */}
+              <div style={{fontSize:12, fontWeight:700, color:"#7C3AED", marginBottom:8, display:"flex", alignItems:"center", gap:5}}>
+                <span>✨ AIアドバイザーに質問する</span>
+              </div>
+              <div style={{display:"flex", gap:8}}>
+                <input 
+                  type="text" 
+                  className="inp" 
+                  style={{fontSize:12, height:36}}
+                  placeholder="例: 長期投資のコツは？" 
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && runChat()}
+                />
+                <button className="primary-btn" onClick={runChat} disabled={chatLoading} style={{width:"auto", padding:"0 15px", height:36, background:"#7C3AED"}}>
+                  送信
+                </button>
+              </div>
+              {chatHistory.length > 1 && (
+                <div style={{marginTop:10, maxHeight:150, overflowY:"auto", padding:10, background:"#F8FAFC", borderRadius:8, border:"1px solid #E2E8F0", fontSize:11, display:"flex", flexDirection:"column", gap:8}}>
+                  {chatHistory.slice(-4).map((msg, i) => (
+                    <div key={i} style={{color: msg.role === "user" ? "#1D4ED8" : "#334155"}}>
+                      <strong>{msg.role === "user" ? "Q:" : "A:"}</strong> {msg.content}
+                    </div>
+                  ))}
+                  <div style={{textAlign:"center", marginTop:4}}>
+                    <button onClick={()=>setTab("chat")} style={{background:"none", border:"none", color:"#7C3AED", fontSize:10, fontWeight:600, cursor:"pointer"}}>
+                      全履歴を表示 ≫
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Quant summary */}
+              <hr className="divider"/>
+              <div className="metric-label">定量指標サマリー</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {[
+                  ["RSI値",     latest?.rsi?.toFixed(1)??"—", latest?.rsi>70?"#DC2626":latest?.rsi<30?"#16A34A":"#0F172A", "買われすぎ・売られすぎを示す指標です。70以上は過熱（売りサイン）、30以下は売られすぎ（買いサイン）とされます。"],
+                  ["MACD方向",  latest?.hist>0?"強気 ↗":"弱気 ↘", latest?.hist>0?"#16A34A":"#DC2626", "トレンドの方向性を示す指標です。「強気」は上昇トレンド、「弱気」は下落トレンドを示唆します。"],
+                  ["前日比",    d?`${d.change_pct>=0?"+":""}${d.change_pct}%`:"—", d?.change_pct>=0?"#16A34A":"#DC2626", "直近の終値と1日前の終値の変動率です。"],
+                  ["シャープ比", d?.sharpe?.toFixed(2)??"—", d?.sharpe>1?"#16A34A":d?.sharpe<0?"#DC2626":"#0F172A", "投資の「効率の良さ」を示します。1.0以上なら優秀、マイナスはリスクに見合っていない状態です。"],
+                ].map(([k,v,c,tip])=>(
+                  <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
+                    <span style={{color:"#64748B", display:"flex", alignItems:"center"}}>
+                      {k}
+                      <span className="help-tip" data-tip={tip}>?</span>
+                    </span>
+                    <span style={{fontWeight:600,color:c}}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>}
+
+        {/* ══════════════════════════════════════════
+            TAB: AIチャット
+            ══════════════════════════════════════════ */}
+        {tab==="chat" && <>
+          <div className="card" style={{height:"calc(100vh - 250px)", display:"flex", flexDirection:"column", padding:0, overflow:"hidden"}}>
+            <div style={{background:"#0B1F3A", color:"#fff", padding:"12px 20px", fontSize:14, fontWeight:700, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+              <span>Lunaron AI 投資相談チャット</span>
+              <span style={{fontSize:10, fontWeight:400, opacity:0.8}}>Powered by Qwen 2.5</span>
+            </div>
+            
+            <div style={{flex:1, overflowY:"auto", padding:20, display:"flex", flexDirection:"column", gap:15}}>
+              {chatHistory.map((msg, i) => (
+                <div key={i} style={{
+                  maxWidth: "85%",
+                  alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+                  background: msg.role === "user" ? "#0B1F3A" : "#F1F5F9",
+                  color: msg.role === "user" ? "#fff" : "#1E293B",
+                  padding: "10px 15px",
+                  borderRadius: msg.role === "user" ? "18px 18px 2px 18px" : "18px 18px 18px 2px",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-wrap",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+                }}>
+                  {msg.content}
+                </div>
+              ))}
+              {chatLoading && (
+                <div style={{alignSelf:"flex-start", background:"#F1F5F9", padding:"10px 15px", borderRadius:"18px 18px 18px 2px", fontSize:13}}>
+                  思考中...
+                </div>
+              )}
+            </div>
+            
+            <div style={{padding:15, background:"#fff", borderTop:"1px solid #E2E8F0", display:"flex", gap:10}}>
+              <input 
+                type="text" 
+                className="inp" 
+                placeholder="投資について何でも聞いてください（例：NISAの始め方は？）" 
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && runChat()}
+                style={{flex:1}}
+              />
+              <button className="primary-btn" onClick={runChat} disabled={chatLoading} style={{width:"auto", padding:"0 20px"}}>
+                送信
+              </button>
+            </div>
+          </div>
+        </>}
+        {tab==="portfolio" && <>
+          {/* Summary cards */}
+          <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
+            {[
+              ["投資総額", fmtYen(totalCost), null],
+              ["現在総額", fmtYen(totalVal),
+               <span className={totalPnlPct>=0?"pos":"neg"} style={{fontSize:11}}>
+                 {totalPnlPct>=0?"▲":"▼"}{Math.abs(totalPnlPct).toFixed(1)}%
+               </span>],
+              ["含み損益",
+               <span className={totalPnl>=0?"pos":"neg"} style={{fontSize:18,fontWeight:600}}>
+                 {totalPnl>=0?"+":""}{fmtYen(totalPnl)}
+               </span>, null],
+            ].map(([l,v,s],i)=>(
+              <div key={i} className="metric-card">
+                <div className="metric-label">{l}</div>
+                <div style={{fontSize:18,fontWeight:600,marginTop:2}}>{v}</div>
+                {s&&<div style={{marginTop:4}}>{s}</div>}
+              </div>
+            ))}
+          </div>
+
+          {/* Asset Allocation Pie Chart */}
+          {pfData.length > 0 && (
+            <div className="card" style={{marginBottom:15, display:"flex", alignItems:"center", gap:20}}>
+              <div style={{flex:1}}>
+                <div className="metric-label" style={{marginBottom:10}}>アセットアロケーション (配分比率)</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie
+                      data={pfData}
+                      dataKey="currentVal"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={2}
+                    >
+                      {pfData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(val, name) => [fmtYen(val), name]} contentStyle={{fontSize:11, borderRadius:8, border:"none", boxShadow:"0 4px 6px -1px rgba(0,0,0,0.1)"}}/>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{flex:1, display:"flex", flexDirection:"column", gap:8}}>
+                {pfData.slice().sort((a,b)=>b.currentVal - a.currentVal).map((h, i) => (
+                  <div key={h.id} style={{display:"flex", alignItems:"center", justifyContent:"space-between", fontSize:11}}>
+                    <div style={{display:"flex", alignItems:"center", gap:6}}>
+                      <div style={{width:8, height:8, borderRadius:"50%", background:PIE_COLORS[pfData.indexOf(h) % PIE_COLORS.length]}}></div>
+                      <span style={{fontWeight:500}}>{h.name}</span>
+                    </div>
+                    <div>
+                      <span style={{fontWeight:600}}>{((h.currentVal / totalVal) * 100).toFixed(1)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Holdings Sections */}
+          {["PayPay", "NISA"].map(section => {
+            const sectionData = pfData.filter(h => (section==="PayPay" ? h.cat==="PayPay" : h.cat==="NISA"));
+            const sectionCost = sectionData.reduce((a,b)=>a+b.totalCost,0);
+            const sectionVal  = sectionData.reduce((a,b)=>a+b.currentVal,0);
+            const sectionPnl  = sectionVal - sectionCost;
+            const sectionPnlPct = sectionCost>0 ? (sectionPnl/sectionCost*100) : 0;
+
+            return (
+              <div key={section} className="card" style={{marginBottom:15, borderLeft:`4px solid ${section==="PayPay"?"#0B1F3A":"#8B5CF6"}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{fontSize:14,fontWeight:600,color:section==="PayPay"?"#0B1F3A":"#8B5CF6"}}>
+                    {section==="PayPay" ? "◆ PayPay ポイント運用枠" : "● NISA / 証券口座枠"}
+                  </div>
+                  <div style={{fontSize:12,fontWeight:600}}>
+                    小計: {fmtYen(sectionVal)} 
+                    <span style={{marginLeft:8,color:sectionPnl>=0?"#16A34A":"#DC2626"}}>
+                      ({sectionPnl>=0?"+":""}{sectionPnlPct.toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+
+                {sectionData.length===0 ? (
+                  <div style={{textAlign:"center",padding:"16px 0",color:"#CBD5E1",fontSize:12}}>銘柄がありません</div>
+                ) : (
+                  <table className="pf-table">
+                    <thead>
+                      <tr>
+                        <th>銘柄</th>
+                        <th>数量</th>
+                        <th>取得単価</th>
+                        <th>評価額</th>
+                        <th>損益</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionData.map(h=>(
+                        <tr key={h.id}>
+                          <td>
+                            <div className="ticker-name" style={{color:h.col}}>{h.ticker}</div>
+                            <div className="ticker-sub">{h.name}</div>
+                          </td>
+                          <td style={{fontSize:13}}>{parseFloat(h.qty).toLocaleString()}</td>
+                          <td style={{fontSize:12}}>${parseFloat(h.buyPrice).toFixed(0)}</td>
+                          <td style={{fontSize:12,fontWeight:500}}>{fmtYen(h.currentVal)}</td>
+                          <td>
+                            <div style={{fontSize:12,fontWeight:600,color:h.pnl>=0?"#16A34A":"#DC2626"}}>
+                              {h.pnl>=0?"+":""}{fmtYen(h.pnl)}
+                            </div>
+                          </td>
+                          <td><button className="remove-btn" onClick={()=>removeHolding(h.id)}>✕</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Add holding form */}
+          <div className="card" style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div className="metric-label">銘柄を追加</div>
+              <div style={{display:"flex",gap:4,background:"#F1F5F9",padding:2,borderRadius:6}}>
+                <button onClick={()=>setIsSimpleMode(true)} 
+                  style={{fontSize:10,padding:"4px 10px",borderRadius:4,border:"none",cursor:"pointer",
+                    background:isSimpleMode?"#fff":"transparent", boxShadow:isSimpleMode?"0 1px 2px rgba(0,0,0,0.1)":"none"}}>
+                  円で入力 (かんたん)
+                </button>
+                <button onClick={()=>setIsSimpleMode(false)}
+                  style={{fontSize:10,padding:"4px 10px",borderRadius:4,border:"none",cursor:"pointer",
+                    background:!isSimpleMode?"#fff":"transparent", boxShadow:!isSimpleMode?"0 1px 2px rgba(0,0,0,0.1)":"none"}}>
+                  数量で入力 (詳細)
+                </button>
+              </div>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"120px 160px 1fr 1fr 1fr",gap:10,alignItems:"end"}} className="two-col">
+              <div>
+                <label className="form-label">運用枠</label>
+                <div style={{display:"flex",gap:4}}>
+                  {["PayPay", "NISA"].map(c=>(
+                    <button key={c} onClick={()=>setNewCat(c)}
+                      style={{
+                        flex:1, padding:"6px 0", borderRadius:6, fontSize:10, border:"1px solid #E2E8F0",
+                        background:newCat===c?"#0B1F3A":"#fff", color:newCat===c?"#fff":"#64748B",
+                        cursor:"pointer"
+                      }}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="form-label">銘柄</label>
+                <select className="sel" value={newTicker} onChange={e=>setNewTicker(e.target.value)}>
+                  {tickers.map(t=><option key={t.id} value={t.id}>{t.id} — {t.name}</option>)}
+                </select>
+              </div>
+
+              {isSimpleMode ? (
+                <>
+                  <div>
+                    <label className="form-label">投資したポイント・金額 (円)</label>
+                    <input className="inp" type="number" placeholder="例: 10000" 
+                      value={yenInvested} onChange={e=>setYenInvested(e.target.value)}/>
+                  </div>
+                  <div>
+                    <label className="form-label">今の評価額 (円)</label>
+                    <input className="inp" type="number" placeholder="省略可" 
+                      value={yenCurrent} onChange={e=>setYenCurrent(e.target.value)}/>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="form-label">保有数量</label>
+                    <input className="inp" type="number" step="any" placeholder="例: 1.5" 
+                      value={newQty} onChange={e=>setNewQty(e.target.value)}/>
+                  </div>
+                  <div>
+                    <label className="form-label">取得単価 ($USD)</label>
+                    <input className="inp" type="number" step="any" placeholder="例: 490.0" 
+                      value={newBuy} onChange={e=>setNewBuy(e.target.value)}/>
+                  </div>
+                </>
+              )}
+
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <button onClick={addHolding} disabled={isSimpleMode ? !yenInvested : (!newQty||!newBuy)}
+                  style={{background:"#0B1F3A",color:"#fff",border:"none",padding:"9px 10px",
+                    borderRadius:8,fontSize:13,fontWeight:500,opacity:(isSimpleMode?!yenInvested:(!newQty||!newBuy))?0.4:1}}>
+                  ＋ 追加
+                </button>
+                {isSimpleMode && <div style={{fontSize:9,color:"#94A3B8",textAlign:"center"}}>レート: 1$ = {usdjpy}円</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Portfolio AI analysis */}
+          <div className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600}}>Lunaron AI — ポートフォリオ診断</div>
+                <div style={{fontSize:10,color:"#94A3B8",marginTop:2}}>
+                  全保有銘柄を分析 → 継続保有・利益確定・損切りの判断と次のアクションを提案します
+                </div>
+              </div>
+            </div>
+            <div className="ai-box" style={{minHeight:130,marginBottom:12}}>
+              {pfLoading
+                ? <div className="thinking"><div className="thinking-dot"/><div className="thinking-dot"/><div className="thinking-dot"/><span className="thinking-text">ポートフォリオを分析中...</span></div>
+                : pfAnalysis
+                  ? <span>{pfAnalysis}</span>
+                  : <span className="ai-placeholder">「ポートフォリオ診断」を実行すると、各銘柄の判断と全体のリスク評価を提案します。</span>
+              }
+            </div>
+            <button className="primary-btn" onClick={runPfAnalysis} disabled={pfLoading||pfData.length===0}>
+              {pfLoading ? "診断中..." : "◉ ポートフォリオ診断を実行"}
+            </button>
+          </div>
+        </>}
+
+        {/* ══════════════════════════════════════════
+            TAB: GBM予測
+            ══════════════════════════════════════════ */}
+        {tab==="forecast" && <>
+        {/* Category Filter */}
+      <div style={{display:"flex",gap:8,padding:"0 4px",marginBottom:8}}>
+        {["すべて", "PayPay", "NISA"].map(c=>(
+          <button key={c} onClick={()=>setFilterCat(c)}
+            style={{
+              padding:"4px 12px", borderRadius:20, fontSize:10, border:"1px solid #E2E8F0",
+              background:filterCat===c?"#0B1F3A":"#fff", color:filterCat===c?"#fff":"#64748B",
+              cursor:"pointer", transition:"all 0.2s"
+            }}>
+            {c}
+          </button>
+        ))}
+      </div>
+
+      <div className="ticker-row" style={{marginBottom:15,padding:"0 4px",display:"flex",overflowX:"auto",gap:6}}>
+        {tickers
+          .filter(t => filterCat==="すべて" || (t.cat && t.cat.includes(filterCat)))
+          .map(t=>(
+          <button key={t.id} className={`ticker-btn ${tick.id===t.id?"active":""}`} onClick={()=>setTick(t)}
+            style={{flex:"0 0 100px",padding:"10px 5px",fontSize:11}}>
+            <strong>{t.id}</strong><br/>
+            <span style={{opacity:.8,fontSize:9,display:"block",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.name}</span>
+          </button>
+        ))}
+      </div>
+
+          {gbm && <>
+            <div className="metric-grid" style={{gridTemplateColumns:"repeat(4,1fr)"}}>
+              {[
+                ["現在価格", fmtPrice(latest.close,tick.id), "基準"],
+                ["7日後 中央値", fmtPrice(gbm.forecast[gbm.forecast.length-1].p50,tick.id), "50パーセンタイル"],
+                ["楽観シナリオ",  fmtPrice(gbm.forecast[gbm.forecast.length-1].p90,tick.id), "90パーセンタイル"],
+                ["悲観シナリオ",  fmtPrice(gbm.forecast[gbm.forecast.length-1].p10,tick.id), "10パーセンタイル"],
+              ].map(([l,v,s])=>(
+                <div key={l} className="metric-card">
+                  <div className="metric-label">{l}</div>
+                  <div style={{fontSize:16,fontWeight:600,marginTop:2}}>{v}</div>
+                  <div style={{fontSize:10,color:"#94A3B8",marginTop:2}}>{s}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="chart-panel">
+              <div className="chart-title">幾何ブラウン運動（GBM）7日間価格予測</div>
+              <div className="chart-sub">
+                数式: dS = μS dt + σS dW&nbsp;&nbsp;|&nbsp;&nbsp;
+                年率ボラ: {(gbm.annual_volatility*100).toFixed(1)}%&nbsp;&nbsp;
+                年率期待収益: {(gbm.annual_drift*100).toFixed(1)}%
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <ComposedChart data={gbm.forecast} margin={{top:4,right:8,bottom:0,left:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false}/>
+                  <XAxis dataKey="day" tick={{fontSize:10,fill:"#94A3B8"}} tickLine={false} axisLine={false}/>
+                  <YAxis tick={{fontSize:9,fill:"#94A3B8"}} tickLine={false} axisLine={false} width={56}
+                    tickFormatter={v=>tick.id==="BTC"||tick.id==="ETH"?"$"+(v/1000).toFixed(0)+"k":"$"+v.toFixed(0)}
+                    domain={[d=>d*0.995, d=>d*1.005]}/>
+                  <Tooltip content={<CustomTT/>}/>
+                  <Area dataKey="p90" stroke="none" fill="#DBEAFE" fillOpacity={0.7} name="90%ile"/>
+                  <Area dataKey="p10" stroke="none" fill="#fff"    fillOpacity={1}   name="10%ile"/>
+                  <Area dataKey="p75" stroke="none" fill="#BFDBFE" fillOpacity={0.6} name="75%ile"/>
+                  <Area dataKey="p25" stroke="none" fill="#fff"    fillOpacity={1}   name="25%ile"/>
+                  <Line type="monotone" dataKey="p90" stroke="#93C5FD" strokeWidth={1} dot={false} strokeDasharray="4 2" name="90%"/>
+                  <Line type="monotone" dataKey="p75" stroke="#60A5FA" strokeWidth={1} dot={false} strokeDasharray="3 2" name="75%"/>
+                  <Line type="monotone" dataKey="p50" stroke={col} strokeWidth={2.5}
+                    dot={{r:4,fill:col,stroke:"#fff",strokeWidth:2}} name="中央値"/>
+                  <Line type="monotone" dataKey="p25" stroke="#60A5FA" strokeWidth={1} dot={false} strokeDasharray="3 2" name="25%"/>
+                  <Line type="monotone" dataKey="p10" stroke="#93C5FD" strokeWidth={1} dot={false} strokeDasharray="4 2" name="10%"/>
+                </ComposedChart>
+              </ResponsiveContainer>
+              <div className="legend-row">
+                <span><span className="legend-dot" style={{background:col}}/>中央値 (50%)</span>
+                <span><span className="legend-dot" style={{background:"#60A5FA"}}/>25–75% レンジ</span>
+                <span><span className="legend-dot" style={{background:"#93C5FD"}}/>10–90% レンジ</span>
+              </div>
+            </div>
+
+            <div className="card">
+              <div style={{fontSize:12,fontWeight:600,marginBottom:10}}>GBMモデルの解説</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}} className="two-col">
+                <div className="formula-box">
+                  <strong>数式の各パラメータ</strong><br/>
+                  dS = μS dt + σS dW<br/>
+                  ・ S : 株価<br/>
+                  ・ μ (ドリフト) : 期待収益率 = {(gbm.annual_drift*100).toFixed(1)}% / 年<br/>
+                  ・ σ (ボラティリティ) : 変動率 = {(gbm.annual_volatility*100).toFixed(1)}% / 年<br/>
+                  ・ dW : ブラウン運動（ランダムウォーク）
+                </div>
+                <div className="formula-box">
+                  <strong>グラフの読み方</strong><br/>
+                  ・ 帯の幅 → 価格の不確実性の大きさ<br/>
+                  ・ 中央値が右上がり → 上昇バイアス<br/>
+                  ・ 悲観10%ile → これを下回る確率10%<br/>
+                  ・ 楽観90%ile → これを上回る確率10%<br/>
+                  ※ 過去データに基づく統計的推定です
+                </div>
+              </div>
+            </div>
+          </>}
+        </>}
+
+        {/* 投資基礎タブ */}
+        {tab==="learn" && <>
+
+          {/* マインドセット */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #0B1F3A"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0B1F3A",marginBottom:12}}>🧠 投資の心構え（マインドセット）</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[
+                ["📐 投資の三原則","収益性・安全性・流動性のバランスを取ることが大切です。高リターンを狙いすぎると、安全性や現金化のしやすさを犠牲にします。"],
+                ["📅 長期・分散・積立","長い期間かけてコツコツ積み立て、複数の資産に分散することでリスクを大幅に下げられます。最も基本的で最も強力な戦略です。"],
+                ["💰 余裕資金で行う","生活費は絶対に使わないこと。手取りの1〜4割程度を目安に、なくなっても困らない資金だけで投資しましょう。"],
+                ["🤔 自己責任の原則","SNSや口コミだけで動かないこと。情報は必ず自分で確認し、最終判断は自分で行う習慣をつけましょう。"]
+              ].map(([t,d])=>(
+                <div key={t} style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+                  <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:6}}>{t}</div>
+                  <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>{d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 金融商品 */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #3B82F6"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>💹 主な金融商品と仕組み</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[
+                ["株式","#DBEAFE","#1D4ED8","企業の成長や配当（インカムゲイン）を狙う。値上がり益と配当の2つで稼げるのが基本です。"],
+                ["投資信託","#DCFCE7","#16A34A","プロに運用を任せる仕組み。少額から始められ、自動的に分散投資できます。インデックスファンドがおすすめ。"],
+                ["ETF（上場投資信託）","#FEF9C3","#CA8A04","証券取引所でリアルタイムに売買できる投資信託。手数料が安く、流動性が高いのが特徴。"],
+                ["債券","#F3E8FF","#7C3AED","国や企業にお金を貸す仕組み。利率は低めだが安全性が高く、株式のリスク緩和に使われます。"],
+                ["REIT（不動産投資信託）","#FEE2E2","#DC2626","不動産に少額から投資できる仕組み。家賃収入が配当として分配されます。"]
+              ].map(([t,bg,c,d])=>(
+                <div key={t} style={{display:"flex",gap:12,padding:"10px 12px",background:bg,borderRadius:8,alignItems:"flex-start"}}>
+                  <span style={{fontWeight:700,color:c,fontSize:12,minWidth:130}}>{t}</span>
+                  <span style={{fontSize:11,color:"#334155",lineHeight:1.5}}>{d}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 税制 */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #10B981"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>🏦 お得な税制・制度</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{padding:"14px",background:"linear-gradient(135deg,#DCFCE7,#BBF7D0)",borderRadius:12}}>
+                <div style={{fontWeight:700,color:"#15803D",fontSize:13,marginBottom:6}}>🌿 NISA（少額投資非課税）</div>
+                <div style={{fontSize:11,color:"#166534",lineHeight:1.6}}>投資で得た利益に税金がかかりません（通常は約20%課税）。年間360万円まで非課税で投資でき、長期投資に最適です。<br/><strong>→ まず最初に使うべき制度！</strong></div>
+              </div>
+              <div style={{padding:"14px",background:"linear-gradient(135deg,#EFF6FF,#DBEAFE)",borderRadius:12}}>
+                <div style={{fontWeight:700,color:"#1D4ED8",fontSize:13,marginBottom:6}}>💎 iDeCo（個人型確定拠出年金）</div>
+                <div style={{fontSize:11,color:"#1E3A8A",lineHeight:1.6}}>老後資金のための積立制度。掛け金が全額所得控除になるため節税効果が高い。60歳まで引き出せないが、節税メリットが大きい。</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 分析手法 */}
+          <div className="card" style={{marginBottom:16, borderLeft:"4px solid #F59E0B"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>🔍 分析の基礎知識</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+                <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:8}}>📊 ファンダメンタルズ分析</div>
+                <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>
+                  企業の財務状況から本質的な価値を判断する方法。<br/>
+                  <strong>PER</strong>（株価収益率）: 低いほど割安<br/>
+                  <strong>PBR</strong>（株価純資産倍率）: 1倍割れは特に割安<br/>
+                  <strong>ROE</strong>（自己資本利益率）: 高いほど効率的な経営<br/>
+                  <strong>配当利回り</strong>: 高いほど安定収入が期待できる
+                </div>
+              </div>
+              <div style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+                <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:8}}>📈 テクニカル分析（このツールで確認）</div>
+                <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>
+                  チャートの動きから売買タイミングを判断する方法。<br/>
+                  <strong>RSI</strong>: 買われすぎ・売られすぎの判断<br/>
+                  <strong>MACD</strong>: トレンドの方向と転換点<br/>
+                  <strong>ボリンジャーバンド</strong>: 価格の変動範囲<br/>
+                  <strong>SMA（移動平均線）</strong>: 中長期トレンド確認
+                </div>
+              </div>
+            </div>
+            <div style={{padding:"10px 14px",background:"#FFF7ED",borderRadius:8,border:"1px solid #FED7AA",marginTop:10,fontSize:11,color:"#9A3412"}}>
+              ⚠️ <strong>重要：</strong>どちらの分析も万能ではありません。両方を組み合わせて、複数の視点から判断することが大切です。
+            </div>
+          </div>
+
+          {/* リスク管理 */}
+          <div className="card" style={{borderLeft:"4px solid #EF4444"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#0F172A",marginBottom:12}}>🛡️ リスク管理の鉄則</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[
+                ["🌍 分散投資","#EFF6FF","資産（株・債券・金など）・地域（日本・米国・新興国）・時間（積立）を分けてリスクを分散。一つが大きく下がっても全体への影響を抑えられます。"],
+                ["✂️ 損切り（ストップロス）","#FFF7ED","損失が拡大する前に売却するルールを事前に決めること。例：「-10%になったら必ず売る」。感情に流されず機械的に実行するのがポイントです。"],
+                ["⚖️ ポートフォリオ管理","#F0FDF4","自分のリスク許容度（どこまで損失に耐えられるか）に合わせて資産の割合を決め、定期的に見直す（リバランス）ことが長期成功の鍵です。"]
+              ].map(([t,bg,d])=>(
+                <div key={t} style={{padding:"12px 14px",background:bg,borderRadius:10,border:"1px solid #E2E8F0"}}>
+                  <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:6}}>{t}</div>
+                  <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>{d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>}
+
+        {/* Footer */}
+        <div className="footer" style={{background:"#7C3AED", color:"#fff", padding:"10px 20px", borderRadius:10, marginBottom:20}}>
+          <span style={{fontWeight:800}}>🚀 LUNARON Investment Dashboard v3.5 (LATEST) · {backendOk?"リアルデータ使用":"シミュレーションデータ使用"}</span>
+          <span style={{fontSize:10}}>AIチャット欄を実装しました。上の「✨ AIアドバイザー」を確認してください。</span>
+        </div>
+      </div>
+      {/* ── Footer ── */}
+      <footer style={{marginTop:40,padding:24,borderTop:"1px solid #E2E8F0",textAlign:"center"}}>
+        <div style={{fontSize:10,color:"#94A3B8"}}>
+          &copy; 2026 Lunaron AI Investment Dashboard. すべてのデータは分析用であり、投資判断は自己責任で行ってください。
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

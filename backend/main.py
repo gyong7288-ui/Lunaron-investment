@@ -733,11 +733,8 @@ if os.path.exists(os.path.join(FRONTEND_DIR, "lib")):
 
 
 @app.get("/")
-def root():
-    index_path = os.path.join(FRONTEND_DIR, "index.html")
-    if not os.path.exists(index_path):
-        return {"error": f"Frontend index.html not found at {index_path}. Check your directory structure."}
-    return FileResponse(index_path)
+def read_index():
+    return FileResponse("frontend/index_v3.html")
 
 
 @app.get("/api/health")
