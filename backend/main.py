@@ -158,8 +158,41 @@ def _local_analysis(prompt: str) -> str:
 ### 【リスク】
 {risks_text}{advice_extra}"""
 
+def ollama_chat_api(prompt: str, system: str = "", history: list = None) -> str:
+    """Ollama API (gemma3) を呼び出してテキストを生成する"""
+    try:
+        url = "http://localhost:11434/api/chat"
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        if history:
+            for msg in history:
+                # msg がオブジェクト(Pydantic)か辞書かを確認
+                if hasattr(msg, "role"):
+                    messages.append({"role": msg.role, "content": msg.content})
+                else:
+                    messages.append({"role": msg.get("role"), "content": msg.get("content")})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": "gemma3",
+            "messages": messages,
+            "stream": False,
+            "options": {
+                "temperature": 0.7,
+                "num_predict": 800
+            }
+        }
+        res = requests.post(url, json=payload, timeout=60)
+        if res.status_code == 200:
+            return res.json().get("message", {}).get("content", "").strip()
+    except Exception as e:
+        print(f"Ollama API Error: {e}")
+    return ""
+
+
 def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
-    """Hugging Face Inference APIを利用してテキスト生成（失敗時はローカル分析にフォールバック）"""
+    """Hugging Face Inference APIを利用してテキスト生成（失敗時はOllamaにフォールバック）"""
     if HF_TOKEN:
         try:
             model_url = "https://api-inference.huggingface.co/v1/chat/completions"
@@ -171,13 +204,17 @@ def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
             if system:
                 messages.append({"role": "system", "content": system})
             if history:
-                messages.extend(history)
+                for msg in history:
+                    if hasattr(msg, "role"):
+                        messages.append({"role": msg.role, "content": msg.content})
+                    else:
+                        messages.append({"role": msg.get("role"), "content": msg.get("content")})
             messages.append({"role": "user", "content": prompt})
             
             payload = {
                 "model": "Qwen/Qwen2.5-72B-Instruct",
                 "messages": messages,
-                "max_tokens": 600,
+                "max_tokens": 800,
                 "temperature": 0.75,
             }
             res = requests.post(model_url, headers=headers, json=payload, timeout=30)
@@ -189,12 +226,23 @@ def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
         except Exception as e:
             print(f"HF API Error: {e}")
     
-    # HF_TOKENなし or API失敗時 → ローカル分析エンジンを使用
+    # HF_TOKENなし or API失敗時 → Ollamaを使用
+    ollama_res = ollama_chat_api(prompt, system, history)
+    if ollama_res:
+        return ollama_res
+        
+    # Ollamaも失敗時 → ローカル分析エンジン（分析用）を使用
     return _local_analysis(prompt)
 
 
 def _local_chat(message: str, history: list = None) -> str:
-    """一般的な投資質問に対するローカルフォールバック会話エンジン"""
+    """一般的な投資質問に対するローカルフォールバック会話エンジン（Ollamaも失敗した場合）"""
+    # まず Ollama を試す
+    ollama_res = ollama_chat_api(message, history=history)
+    if ollama_res:
+        return ollama_res
+        
+    # 以下は完全なフォールバック
     import random
     m = message.lower()
     
@@ -249,7 +297,17 @@ def _local_chat(message: str, history: list = None) -> str:
 
 # ─── (以下は不要になったOllama関連をモック化) ---
 def check_ollama():
-    return True, True
+    """Ollamaの状態とgemma3モデルの有無を確認する"""
+    try:
+        # タグ一覧を取得して起動確認とモデル確認
+        r = requests.get("http://localhost:11434/api/tags", timeout=2)
+        if r.status_code == 200:
+            models = r.json().get("models", [])
+            has_gemma3 = any("gemma3" in m.get("name", "") for m in models)
+            return True, has_gemma3
+    except:
+        pass
+    return False, False
 
 
 # ─── App setup ────────────────────────────────────────────────────────────────
@@ -664,6 +722,14 @@ def analyze_portfolio(req: PortfolioRequest):
     if not req.holdings:
         raise HTTPException(400, "holdings is empty")
 
+    origins = [
+    "http://localhost:8000",
+    "http://localhost:3000",
+    "http://127.0.0.1:8000",
+    "https://gyongery-lunaron-investment.hf.space",
+    "https://lunaron-investment.pages.dev",
+    "*"
+]
     rows       = []
     total_cost = 0.0
     total_val  = 0.0
@@ -723,7 +789,10 @@ def analyze_portfolio(req: PortfolioRequest):
     }
 
 
-# ─── ヘルスチェック ───────────────────────────────────────────────────────────
+def ollama_chat(prompt: str) -> str:
+    """ポートフォリオ分析などのための汎用AIチャット（HF API または ローカルフォールバック）"""
+    return hf_chat(prompt)
+
 
 # ─── 静的ファイル配信 ─────────────────────────────────────────────────────────
 
@@ -734,8 +803,13 @@ if os.path.exists(os.path.join(FRONTEND_DIR, "lib")):
 
 @app.get("/")
 def read_index():
+    # ユーザーが編集中の index_v3.html を優先して提供
+    target = os.path.join(FRONTEND_DIR, "index_v3.html")
+    if os.path.exists(target):
+        print(f"Serving {target} at /")
+        return FileResponse(target)
     print("Serving index_final.html at /")
-    return FileResponse("frontend/index_final.html")
+    return FileResponse(os.path.join(FRONTEND_DIR, "index_final.html"))
 
 
 @app.get("/api/health")
@@ -760,9 +834,11 @@ def health():
 
 @app.get("/api/ollama/status")
 def ai_status():
-    """Hugging Face API の接続確認（モック）"""
+    """AIの状態（Ollama）を確認"""
+    running, ready = check_ollama()
+    msg = "Ready" if ready else ("Ollama is running but gemma3 is missing" if running else "Ollama is not running")
     return {
-        "ollama_running": True, # フロント互換性のため
-        "gemma3_ready": True,   # フロント互換性のため
-        "message": "Hugging Face Inference API is Ready"
+        "ollama_running": running,
+        "gemma3_ready": ready,
+        "message": msg
     }
