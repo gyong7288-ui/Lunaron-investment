@@ -726,6 +726,7 @@ def analyze_portfolio(req: PortfolioRequest):
     "http://localhost:8000",
     "http://localhost:3000",
     "http://127.0.0.1:8000",
+    "https://gyongery-lunaron-investment.hf.space",
     "https://gyong7288-ui-lunaron-investment.hf.space",
     "https://lunaron-investment.pages.dev",
     "*"
