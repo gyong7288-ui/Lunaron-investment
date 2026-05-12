@@ -70,19 +70,15 @@ input, select { font-family: inherit; }
 .tabs {
   background: #fff; border-bottom: 1px solid #E4E9F0;
   display: flex; padding: 0 24px;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
 .tab-btn {
   padding: 12px 18px; border: none; background: none;
   font-size: 13px; font-weight: 500; color: #94A3B8;
   border-bottom: 2px solid transparent; cursor: pointer;
   transition: color .15s, border-color .15s;
-  white-space: nowrap;
 }
 .tab-btn:hover { color: #475569; }
 .tab-btn.active { color: #0B1F3A; border-bottom-color: #0B1F3A; }
-.tab-btn.chat-highlight { color: #7C3AED; font-weight: 700; }
-.tab-btn.chat-highlight.active { border-bottom-color: #7C3AED; }
 
 /* ── Content ── */
 .content { padding: 18px 20px; }
@@ -118,7 +114,8 @@ input, select { font-family: inherit; }
 .help-tip {
   display: inline-flex; align-items: center; justify-content: center;
   width: 14px; height: 14px; border-radius: 50%; background: #E2E8F0;
-  color: #64748B; font-size: 9px; font-weight: 700; margin-left: 6px;
+
+color: #64748B; font-size: 9px; font-weight: 700; margin-left: 6px;
   cursor: help; position: relative;
 }
 .help-tip:hover::after {
@@ -229,8 +226,9 @@ input, select { font-family: inherit; }
 
 /* ── Chart panels ── */
 .chart-panel { 
-  background: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.8); 
-  border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; 
+  background: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.8);
+
+border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; 
   box-shadow: 0 8px 32px rgba(31, 38, 135, 0.03);
   backdrop-filter: blur(12px);
 }
@@ -326,7 +324,7 @@ const {
    ════════════════════════════════════════════════════════ */
 // 本番: Hugging Face Space を常に使用
 // ローカル開発時は http://localhost:8000 を使用
-const HF_BACKEND = "https://gyong7288-ui-lunaron-investment.hf.space";
+const HF_BACKEND = "https://gyongery-lunaron-investment.hf.space";
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const API_BASE = localStorage.getItem("LUNARON_API_BASE") || (IS_LOCAL ? "http://localhost:8000" : HF_BACKEND);
 
@@ -445,7 +443,8 @@ function buildChartData(ticker) {
     rsi:rsiArr[i]!=null?+rsiArr[i].toFixed(1):null,
     macd:+ml[i].toFixed(4), macdSig:+ms[i].toFixed(4), hist:+mh[i].toFixed(4),
     upper:up[i]!=null?+up[i].toFixed(2):null,
-    middle:mid[i]!=null?+mid[i].toFixed(2):null,
+
+middle:mid[i]!=null?+mid[i].toFixed(2):null,
     lower:lo[i]!=null?+lo[i].toFixed(2):null,
   }));
   const latest=chartData[chartData.length-1];
@@ -502,13 +501,6 @@ function App() {
   const [yenInvested, setYenInvested] = useState("");
   const [yenCurrent, setYenCurrent] = useState("");
   const [ollamaStatus, setOllamaStatus] = useState({ ollama_running: false, gemma3_ready: false, message: "確認中..." });
-  
-  /* チャット機能の状態 */
-  const [chatHistory, setChatHistory] = useState([
-    { role: "assistant", content: "こんにちは！投資アドバイザーのLunaron AIです。投資の基礎知識やNISAの活用方法、リスク管理など、何でも気軽に聞いてくださいね。" }
-  ]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
 
   /* バックエンド疎通確認 */
   useEffect(() => {
@@ -558,15 +550,15 @@ function App() {
       } catch (e) { setApiError("バックエンドエラー。フォールバックデータを使用中。"); }
     }
     // フォールバック
-    setIndicatorData(buildChartData(t));
+
+setIndicatorData(buildChartData(t));
     setIndicatorLoading(false);
   }, [backendOk]);
 
   useEffect(() => {
-    setIndicatorData(null); // 切り替え時に一旦クリア
     fetchIndicators(tick);
     setAnalysis(""); setSignal(null);
-  }, [tick, fetchIndicators]);
+  }, [tick]);
 
   /* AI分析実行 */
   const runAnalysis = async () => {
@@ -592,38 +584,6 @@ function App() {
       : "AI(Ollama)が起動していません。ターミナルで `ollama serve` を実行してください。";
     setAnalysis(msg);
     setAnalysisLoading(false);
-  };
-
-  /* AIチャット実行 */
-  const runChat = async () => {
-    if (!chatInput.trim() || chatLoading) return;
-    const userMsg = chatInput.trim();
-    setChatInput("");
-    setChatLoading(true);
-    
-    const newHistory = [...chatHistory, { role: "user", content: userMsg }];
-    setChatHistory(newHistory);
-
-    if (backendOk) {
-      try {
-        const r = await fetch(`${API_BASE}/api/chat`, {
-          method: "POST", headers: { "Content-Type":"application/json" },
-          body: JSON.stringify({ message: userMsg, history: chatHistory })
-        });
-        const data = await r.json();
-        if (data.response) {
-          setChatHistory(prev => [...prev, { role: "assistant", content: data.response }]);
-          setChatLoading(false);
-          return;
-        }
-      } catch (e) { console.error(e); }
-    }
-    
-    // バックエンド未接続時の簡易的な自動応答（デモ用）
-    setTimeout(() => {
-      setChatHistory(prev => [...prev, { role: "assistant", content: "現在AIサーバーとの接続が不安定なようです。投資の基本原則（長期・分散・積立）を守ることで、多くのリスクを軽減できますよ。具体的な銘柄分析は「チャート分析」タブから行えます。" }]);
-      setChatLoading(false);
-    }, 1000);
   };
 
   /* ポートフォリオ診断 */
@@ -659,20 +619,20 @@ function App() {
   const addHolding = () => {
     const t = TICKER_MAP[newTicker];
     if (!t) return;
-    
+
     let qty, buyPrice;
-    
+
     if (isSimpleMode) {
       // かんたん入力モード (円単位)
       if (!yenInvested) return;
       const invYen = parseFloat(yenInvested);
       const curYen = parseFloat(yenCurrent) || invYen;
-      
+
       // バックエンドから取得した現在のドル価格 (デモの場合はbuildChartDataから取得)
       const currentPriceUSD = (indicatorData && indicatorData.ticker_id === newTicker) 
         ? indicatorData.latest.close 
         : buildChartData(t).latest.close;
-        
+
       // 数量 = 現在の評価額(円) / (現在の株価(ドル) * ドル円)
       qty = curYen / (currentPriceUSD * usdjpy);
       // 取得単価 = 投資額(円) / (数量 * ドル円)
@@ -710,7 +670,8 @@ function App() {
   const totalCost = pfData.reduce((a,b)=>a+b.totalCost,0);
   const totalVal  = pfData.reduce((a,b)=>a+b.currentVal,0);
   const totalPnl  = totalVal - totalCost;
-  const totalPnlPct = totalCost>0?(totalPnl/totalCost)*100:0;
+
+const totalPnlPct = totalCost>0?(totalPnl/totalCost)*100:0;
 
   /* Chart helpers */
   const d = indicatorData;
@@ -746,7 +707,7 @@ function App() {
           <div className="header-logo"><div className="header-logo-dot"/></div>
           <div>
             <div className="header-title">LUNARON</div>
-            <div className="header-sub">Investment Dashboard v3.5 <span style={{color:"#7C3AED", fontWeight:700}}>(AI Chat Enabled)</span></div>
+            <div className="header-sub">Investment Dashboard v2.0</div>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:20}}>
@@ -776,15 +737,8 @@ function App() {
 
       {/* ── Tabs ── */}
       <nav className="tabs">
-        {[
-          ["chart","◈ チャート分析"],
-          ["chat","✨ AI投資相談"],
-          ["portfolio","◉ ポートフォリオ"],
-          ["forecast","◎ GBM予測"],
-          ["learn","📚 投資基礎"]
-        ].map(([k,l])=>(
-          <button key={k} className={`tab-btn ${tab===k?"active":""} ${k==="chat"?"chat-highlight":""}`} 
-            onClick={()=>{ console.log("Switching to", k); setTab(k); }}>{l}</button>
+        {[["chart","◈ チャート分析"],["portfolio","◉ ポートフォリオ"],["forecast","◎ GBM予測"],["learn","📚 投資基礎"]].map(([k,l])=>(
+          <button key={k} className={`tab-btn ${tab===k?"active":""}`} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </nav>
 
@@ -804,7 +758,8 @@ function App() {
         {tab==="chart" && <>
           <div className="ticker-row">
             {tickers.map(t => (
-              <button key={t.id} className={`ticker-btn ${tick.id===t.id?"active":""}`}
+
+<button key={t.id} className={`ticker-btn ${tick.id===t.id?"active":""}`}
                 onClick={()=>setTick(t)}>
                 <strong>{t.id}</strong>&nbsp;
                 <span style={{opacity:.7,fontSize:10}}>{t.name}</span>
@@ -873,7 +828,8 @@ function App() {
               ["RSI(14)", latest?.rsi?.toFixed(1)??"—",
                <span className="muted" style={{fontSize:10}}>{!latest?.rsi?"":latest.rsi>70?"過熱":latest.rsi<30?"割安":"中立"}</span>],
               ["MACD", latest?.hist?.toFixed(3)??"—",
-               <span style={{fontSize:10,color:latest?.hist>0?"#16A34A":"#DC2626"}}>{latest?.hist>0?"強気↗":"弱気↘"}</span>],
+
+<span style={{fontSize:10,color:latest?.hist>0?"#16A34A":"#DC2626"}}>{latest?.hist>0?"強気↗":"弱気↘"}</span>],
               ["シャープ", d?.sharpe?.toFixed(2)??"—",
                <span className="muted" style={{fontSize:10}}>{!d?.sharpe?"":d.sharpe>1?"優秀":d.sharpe>0?"普通":"要注意"}</span>],
               ["7日予測(中央値)", gbm?fmtPrice(gbm.forecast[gbm.forecast.length-1].p50,tick.id):"—",
@@ -935,7 +891,8 @@ function App() {
               </div>
 
               {chartSub==="RSI" && (
-                <div className="chart-panel" style={{padding:"12px 16px"}}>
+
+<div className="chart-panel" style={{padding:"12px 16px"}}>
                   <div style={{fontSize:11,color:"#64748B",fontWeight:500,marginBottom:6}}>RSI (14) — 相対力指数</div>
                   <ResponsiveContainer width="100%" height={130}>
                     <LineChart data={recent.filter(d=>d.rsi!=null)} margin={{top:4,right:4,bottom:0,left:0}}>
@@ -996,7 +953,8 @@ function App() {
             </div>
 
             {/* AI analysis card */}
-            <div className="card" style={{display:"flex",flexDirection:"column",gap:10}}>
+
+<div className="card" style={{display:"flex",flexDirection:"column",gap:10}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:14,fontWeight:700,color:"#0F172A"}}>Lunaron AI 分析</div>
@@ -1038,7 +996,7 @@ function App() {
                             else if (title.includes("根拠")) { icon = "📊"; color = "#0B1F3A"; bg = "#F1F5F9"; }
                             else if (title.includes("リスク")) { icon = "⚠️"; color = "#DC2626"; bg = "#FEE2E2"; }
                             else if (title.includes("アクションプラン")) { icon = "🚀"; color = "#7C3AED"; bg = "#F5F3FF"; }
-                            
+
                             return (
                               <div key={i} style={{padding:"10px 12px", background:bg, borderRadius:8, borderLeft:`3px solid ${color}`}}>
                                 <div style={{fontWeight:600, fontSize:12, color:color, marginBottom:4, display:"flex", alignItems:"center", gap:6}}>
@@ -1060,43 +1018,9 @@ function App() {
                 value={aiQuery} onChange={e=>setAiQuery(e.target.value)}
                 disabled={analysisLoading}/>
               <button className="primary-btn" onClick={runAnalysis} disabled={analysisLoading}>
-                {analysisLoading ? "分析中..." : "◆ 指標からAI分析を実行"}
-              </button>
+                {analysisLoading ? "分析中..." : "◆ AI分析を実行"}
 
-              <hr className="divider" style={{margin:"15px 0"}}/>
-              
-              {/* 直接対話チャット欄 */}
-              <div style={{fontSize:12, fontWeight:700, color:"#7C3AED", marginBottom:8, display:"flex", alignItems:"center", gap:5}}>
-                <span>✨ AIアドバイザーに質問する</span>
-              </div>
-              <div style={{display:"flex", gap:8}}>
-                <input 
-                  type="text" 
-                  className="inp" 
-                  style={{fontSize:12, height:36}}
-                  placeholder="例: 長期投資のコツは？" 
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && runChat()}
-                />
-                <button className="primary-btn" onClick={runChat} disabled={chatLoading} style={{width:"auto", padding:"0 15px", height:36, background:"#7C3AED"}}>
-                  送信
-                </button>
-              </div>
-              {chatHistory.length > 1 && (
-                <div style={{marginTop:10, maxHeight:150, overflowY:"auto", padding:10, background:"#F8FAFC", borderRadius:8, border:"1px solid #E2E8F0", fontSize:11, display:"flex", flexDirection:"column", gap:8}}>
-                  {chatHistory.slice(-4).map((msg, i) => (
-                    <div key={i} style={{color: msg.role === "user" ? "#1D4ED8" : "#334155"}}>
-                      <strong>{msg.role === "user" ? "Q:" : "A:"}</strong> {msg.content}
-                    </div>
-                  ))}
-                  <div style={{textAlign:"center", marginTop:4}}>
-                    <button onClick={()=>setTab("chat")} style={{background:"none", border:"none", color:"#7C3AED", fontSize:10, fontWeight:600, cursor:"pointer"}}>
-                      全履歴を表示 ≫
-                    </button>
-                  </div>
-                </div>
-              )}
+</button>
 
               {/* Quant summary */}
               <hr className="divider"/>
@@ -1122,55 +1046,8 @@ function App() {
         </>}
 
         {/* ══════════════════════════════════════════
-            TAB: AIチャット
+            TAB: ポートフォリオ
             ══════════════════════════════════════════ */}
-        {tab==="chat" && <>
-          <div className="card" style={{height:"calc(100vh - 250px)", display:"flex", flexDirection:"column", padding:0, overflow:"hidden"}}>
-            <div style={{background:"#0B1F3A", color:"#fff", padding:"12px 20px", fontSize:14, fontWeight:700, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
-              <span>Lunaron AI 投資相談チャット</span>
-              <span style={{fontSize:10, fontWeight:400, opacity:0.8}}>Powered by Qwen 2.5</span>
-            </div>
-            
-            <div style={{flex:1, overflowY:"auto", padding:20, display:"flex", flexDirection:"column", gap:15}}>
-              {chatHistory.map((msg, i) => (
-                <div key={i} style={{
-                  maxWidth: "85%",
-                  alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                  background: msg.role === "user" ? "#0B1F3A" : "#F1F5F9",
-                  color: msg.role === "user" ? "#fff" : "#1E293B",
-                  padding: "10px 15px",
-                  borderRadius: msg.role === "user" ? "18px 18px 2px 18px" : "18px 18px 18px 2px",
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  whiteSpace: "pre-wrap",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
-                }}>
-                  {msg.content}
-                </div>
-              ))}
-              {chatLoading && (
-                <div style={{alignSelf:"flex-start", background:"#F1F5F9", padding:"10px 15px", borderRadius:"18px 18px 18px 2px", fontSize:13}}>
-                  思考中...
-                </div>
-              )}
-            </div>
-            
-            <div style={{padding:15, background:"#fff", borderTop:"1px solid #E2E8F0", display:"flex", gap:10}}>
-              <input 
-                type="text" 
-                className="inp" 
-                placeholder="投資について何でも聞いてください（例：NISAの始め方は？）" 
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && runChat()}
-                style={{flex:1}}
-              />
-              <button className="primary-btn" onClick={runChat} disabled={chatLoading} style={{width:"auto", padding:"0 20px"}}>
-                送信
-              </button>
-            </div>
-          </div>
-        </>}
         {tab==="portfolio" && <>
           {/* Summary cards */}
           <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
@@ -1219,7 +1096,8 @@ function App() {
                 </ResponsiveContainer>
               </div>
               <div style={{flex:1, display:"flex", flexDirection:"column", gap:8}}>
-                {pfData.slice().sort((a,b)=>b.currentVal - a.currentVal).map((h, i) => (
+
+{pfData.slice().sort((a,b)=>b.currentVal - a.currentVal).map((h, i) => (
                   <div key={h.id} style={{display:"flex", alignItems:"center", justifyContent:"space-between", fontSize:11}}>
                     <div style={{display:"flex", alignItems:"center", gap:6}}>
                       <div style={{width:8, height:8, borderRadius:"50%", background:PIE_COLORS[pfData.indexOf(h) % PIE_COLORS.length]}}></div>
@@ -1302,7 +1180,8 @@ function App() {
               <div style={{display:"flex",gap:4,background:"#F1F5F9",padding:2,borderRadius:6}}>
                 <button onClick={()=>setIsSimpleMode(true)} 
                   style={{fontSize:10,padding:"4px 10px",borderRadius:4,border:"none",cursor:"pointer",
-                    background:isSimpleMode?"#fff":"transparent", boxShadow:isSimpleMode?"0 1px 2px rgba(0,0,0,0.1)":"none"}}>
+
+background:isSimpleMode?"#fff":"transparent", boxShadow:isSimpleMode?"0 1px 2px rgba(0,0,0,0.1)":"none"}}>
                   円で入力 (かんたん)
                 </button>
                 <button onClick={()=>setIsSimpleMode(false)}
@@ -1387,7 +1266,8 @@ function App() {
             </div>
             <div className="ai-box" style={{minHeight:130,marginBottom:12}}>
               {pfLoading
-                ? <div className="thinking"><div className="thinking-dot"/><div className="thinking-dot"/><div className="thinking-dot"/><span className="thinking-text">ポートフォリオを分析中...</span></div>
+
+? <div className="thinking"><div className="thinking-dot"/><div className="thinking-dot"/><div className="thinking-dot"/><span className="thinking-text">ポートフォリオを分析中...</span></div>
                 : pfAnalysis
                   ? <span>{pfAnalysis}</span>
                   : <span className="ai-placeholder">「ポートフォリオ診断」を実行すると、各銘柄の判断と全体のリスク評価を提案します。</span>
@@ -1461,7 +1341,8 @@ function App() {
                     domain={[d=>d*0.995, d=>d*1.005]}/>
                   <Tooltip content={<CustomTT/>}/>
                   <Area dataKey="p90" stroke="none" fill="#DBEAFE" fillOpacity={0.7} name="90%ile"/>
-                  <Area dataKey="p10" stroke="none" fill="#fff"    fillOpacity={1}   name="10%ile"/>
+
+<Area dataKey="p10" stroke="none" fill="#fff"    fillOpacity={1}   name="10%ile"/>
                   <Area dataKey="p75" stroke="none" fill="#BFDBFE" fillOpacity={0.6} name="75%ile"/>
                   <Area dataKey="p25" stroke="none" fill="#fff"    fillOpacity={1}   name="25%ile"/>
                   <Line type="monotone" dataKey="p90" stroke="#93C5FD" strokeWidth={1} dot={false} strokeDasharray="4 2" name="90%"/>
@@ -1521,7 +1402,8 @@ function App() {
                   <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>{d}</div>
                 </div>
               ))}
-            </div>
+
+</div>
           </div>
 
           {/* 金融商品 */}
@@ -1572,7 +1454,8 @@ function App() {
                   <strong>配当利回り</strong>: 高いほど安定収入が期待できる
                 </div>
               </div>
-              <div style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
+
+<div style={{padding:"12px 14px",background:"rgba(248,250,252,0.8)",borderRadius:10,border:"1px solid #E2E8F0"}}>
                 <div style={{fontWeight:600,fontSize:12,color:"#0F172A",marginBottom:8}}>📈 テクニカル分析（このツールで確認）</div>
                 <div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>
                   チャートの動きから売買タイミングを判断する方法。<br/>
@@ -1607,9 +1490,9 @@ function App() {
         </>}
 
         {/* Footer */}
-        <div className="footer" style={{background:"#7C3AED", color:"#fff", padding:"10px 20px", borderRadius:10, marginBottom:20}}>
-          <span style={{fontWeight:800}}>🚀 LUNARON Investment Dashboard v3.5 (LATEST) · {backendOk?"リアルデータ使用":"シミュレーションデータ使用"}</span>
-          <span style={{fontSize:10}}>AIチャット欄を実装しました。上の「✨ AIアドバイザー」を確認してください。</span>
+        <div className="footer">
+          <span>LUNARON Investment Dashboard v2.0 · {backendOk?"リアルデータ使用":"シミュレーションデータ使用"}</span>
+          <span>投資は自己責任でお願いします · Not financial advice</span>
         </div>
       </div>
       {/* ── Footer ── */}
