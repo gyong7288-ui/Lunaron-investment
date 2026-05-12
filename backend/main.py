@@ -834,12 +834,23 @@ def health():
 
 
 @app.get("/api/ollama/status")
-def ai_status():
-    """AIの状態（Ollama）を確認"""
+async def ai_status():
+    """AI（Ollama または HF Inference API）の稼働状況を確認"""
     running, ready = check_ollama()
-    msg = "Ready" if ready else ("Ollama is running but gemma3 is missing" if running else "Ollama is not running")
+    hf_available = bool(HF_TOKEN)
+    
+    # いずれかが利用可能なら「利用可能」と判定
+    is_ready = ready or hf_available
+    
+    msg = "AI is ready" if is_ready else "Ollama is not running and HF_TOKEN is missing"
+    if hf_available:
+        msg = "Cloud AI (Inference API) is active"
+    elif ready:
+        msg = "Local AI (Ollama) is active"
+        
     return {
-        "ollama_running": running,
-        "gemma3_ready": ready,
+        "ollama_running": running or hf_available, # フロントエンドの簡易判定用
+        "gemma3_ready": is_ready,
+        "hf_inference_active": hf_available,
         "message": msg
     }

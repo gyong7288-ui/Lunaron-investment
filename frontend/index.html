@@ -776,7 +776,7 @@ function App() {
                 {backendOk ? "● API Online" : "○ Offline"}
               </div>
               <div style={{fontSize:11,color:ollamaStatus.gemma3_ready?"#16A34A":"#F59E0B"}}>
-                {ollamaStatus.ollama_running ? (ollamaStatus.gemma3_ready ? "● AI Ready" : "▲ AI Loading") : "○ AI Offline"}
+                {ollamaStatus.gemma3_ready ? "● AI Online" : (ollamaStatus.ollama_running ? "▲ AI Loading" : "○ AI Offline")}
               </div>
             </div>
           </div>
