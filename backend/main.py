@@ -192,7 +192,7 @@ def ollama_chat_api(prompt: str, system: str = "", history: list = None) -> str:
 
 
 def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
-    """Hugging Face Inference APIを利用してテキスト生成（失敗時はOllamaにフォールバック）"""
+    """Gemma 2 を優先して呼び出す"""
     if HF_TOKEN:
         try:
             model_url = "https://api-inference.huggingface.co/v1/chat/completions"
@@ -212,7 +212,7 @@ def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
             messages.append({"role": "user", "content": prompt})
             
             payload = {
-                "model": "Qwen/Qwen2.5-72B-Instruct",
+                "model": "google/gemma-2-9b-it",
                 "messages": messages,
                 "max_tokens": 800,
                 "temperature": 0.75,
