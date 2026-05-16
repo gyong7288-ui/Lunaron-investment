@@ -193,8 +193,10 @@ def ollama_chat_api(prompt: str, system: str = "", history: list = None) -> str:
 
 def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
     """Gemma 2 を優先して呼び出す"""
+    hf_error_detail = ""
     if HF_TOKEN:
         try:
+            import time
             model_url = "https://api-inference.huggingface.co/v1/chat/completions"
             headers = {
                 "Authorization": f"Bearer {HF_TOKEN}",
@@ -217,22 +219,30 @@ def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
                 "max_tokens": 800,
                 "temperature": 0.75,
             }
-            res = requests.post(model_url, headers=headers, json=payload, timeout=30)
-            if res.status_code == 200:
-                result = res.json()
-                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                if content:
-                    return content.strip()
+            
+            for attempt in range(3):
+                res = requests.post(model_url, headers=headers, json=payload, timeout=30)
+                if res.status_code == 200:
+                    result = res.json()
+                    content_res = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    if content_res:
+                        return content_res.strip()
+                elif res.status_code == 503:
+                    hf_error_detail = f"Hugging Face API: モデルをロード中(503)... ({attempt+1}/3)"
+                    time.sleep(5)
+                else:
+                    hf_error_detail = f"Hugging Face API エラー: {res.status_code} - {res.text[:100]}"
+                    break
         except Exception as e:
-            print(f"HF API Error: {e}")
+            hf_error_detail = f"Hugging Face API 例外エラー: {str(e)}"
+    else:
+        hf_error_detail = "Hugging Face の APIキー (HF_TOKEN) が設定されていません。"
     
-    # HF_TOKENなし or API失敗時 → Ollamaを使用
     ollama_res = ollama_chat_api(prompt, system, history)
     if ollama_res:
         return ollama_res
         
-    # Ollamaも失敗時 → ローカル分析エンジン（分析用）を使用
-    return "【エラー】AIからの応答を生成できませんでした。APIキー（HF_TOKEN）が設定されているか、またはOllama（gemma2）が起動しているか確認してください。"
+    return f"【エラー】AIからの応答を生成できませんでした。\n\n詳細理由: {hf_error_detail}\n\n※クラウド環境(Hugging Face Space)の場合は、SettingsのSecretsに『HF_TOKEN』を登録し再起動してください。\n※ローカル環境の場合は、Ollama (gemma2) を起動するか、.envに HF_TOKEN を設定してください。"
 
 
 def _local_chat(message: str, history: list = None) -> str:
