@@ -197,7 +197,7 @@ def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
     if HF_TOKEN:
         try:
             import time
-            model_url = "https://api-inference.huggingface.co/models/google/gemma-2-9b-it/v1/chat/completions"
+            model_url = "https://router.huggingface.co/hf-inference/v1/chat/completions"
             headers = {
                 "Authorization": f"Bearer {HF_TOKEN}",
                 "Content-Type": "application/json"
