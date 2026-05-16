@@ -159,7 +159,7 @@ def _local_analysis(prompt: str) -> str:
 {risks_text}{advice_extra}"""
 
 def ollama_chat_api(prompt: str, system: str = "", history: list = None) -> str:
-    """Ollama API (gemma3) を呼び出してテキストを生成する"""
+    """Ollama API (gemma2) を呼び出してテキストを生成する"""
     try:
         url = "http://localhost:11434/api/chat"
         messages = []
@@ -175,7 +175,7 @@ def ollama_chat_api(prompt: str, system: str = "", history: list = None) -> str:
         messages.append({"role": "user", "content": prompt})
 
         payload = {
-            "model": "gemma3",
+            "model": "gemma2",
             "messages": messages,
             "stream": False,
             "options": {
@@ -232,7 +232,7 @@ def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
         return ollama_res
         
     # Ollamaも失敗時 → ローカル分析エンジン（分析用）を使用
-    return _local_analysis(prompt)
+    return "【エラー】AIからの応答を生成できませんでした。APIキー（HF_TOKEN）が設定されているか、またはOllama（gemma2）が起動しているか確認してください。"
 
 
 def _local_chat(message: str, history: list = None) -> str:
@@ -297,14 +297,14 @@ def _local_chat(message: str, history: list = None) -> str:
 
 # ─── (以下は不要になったOllama関連をモック化) ---
 def check_ollama():
-    """Ollamaの状態とgemma3モデルの有無を確認する"""
+    """Ollamaの状態とgemma2モデルの有無を確認する"""
     try:
         # タグ一覧を取得して起動確認とモデル確認
         r = requests.get("http://localhost:11434/api/tags", timeout=2)
         if r.status_code == 200:
             models = r.json().get("models", [])
-            has_gemma3 = any("gemma3" in m.get("name", "") for m in models)
-            return True, has_gemma3
+            has_gemma2 = any("gemma2" in m.get("name", "") for m in models)
+            return True, has_gemma2
     except:
         pass
     return False, False
@@ -706,7 +706,7 @@ def chat_with_ai(req: ChatRequest):
 
     try:
         # HF API or Fallback
-        if HF_TOKEN:
+        if True:
             response = hf_chat(req.message, system=system_prompt, history=history_list)
         else:
             response = _local_chat(req.message, history=history_list)
@@ -718,7 +718,7 @@ def chat_with_ai(req: ChatRequest):
 
 @app.post("/api/portfolio/analyze")
 def analyze_portfolio(req: PortfolioRequest):
-    """保有ポートフォリオ全体を Ollama (Gemma3) で診断"""
+    """保有ポートフォリオ全体を Ollama (gemma2) で診断"""
     if not req.holdings:
         raise HTTPException(400, "holdings is empty")
 
