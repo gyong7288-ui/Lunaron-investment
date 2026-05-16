@@ -214,7 +214,7 @@ def hf_chat(prompt: str, system: str = "", history: list = None) -> str:
             messages.append({"role": "user", "content": prompt})
             
             payload = {
-                "model": "google/gemma-2-9b-it",
+                "model": "Qwen/Qwen2.5-72B-Instruct",
                 "messages": messages,
                 "max_tokens": 800,
                 "temperature": 0.75,
